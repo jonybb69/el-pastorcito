@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+/* Tipografía personalizada */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: 'Courier New', monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+/* styles/globals.css */
+
+body {
+  font-family: 'Roboto', sans-serif;
+  background-color: #1f1f1f;
+  color: white;
+  margin: 0;
+}
+
+a {
+  text-decoration: none;
+}
+
+ul {
+  list-style-type: none;
+}
+
+nav ul {
+  display: flex;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  nav ul {
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
+footer a {
+  transition: color 0.3s ease;
+}
+
+footer p {
+  margin-bottom: 0;
+}
+
