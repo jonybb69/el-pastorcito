@@ -1,0 +1,65 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Cliente {
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  telefono  String   @unique
+  direccion String
+  pedidos   Pedido[]
+}
+
+model Producto {
+  id      Int      @id @default(autoincrement())
+  nombre  String
+  precio  Float
+  pedidos PedidoProducto[]
+  imagen   String
+  creadoEn DateTime @default(now())
+}
+
+model Salsa {
+  id      Int      @id @default(autoincrement())
+  nombre  String
+  pedidos PedidoSalsa[]
+}
+
+model Pedido {
+  id         Int               @id @default(autoincrement())
+  cliente    Cliente           @relation(fields: [clienteId], references: [id])
+  clienteId  Int
+  productos  PedidoProducto[]
+  salsas     PedidoSalsa[]
+  comentario String?
+  metodoPago String
+  creadoEn   DateTime          @default(now())
+}
+
+model PedidoProducto {
+  id         Int      @id @default(autoincrement())
+  pedido     Pedido   @relation(fields: [pedidoId], references: [id])
+  pedidoId   Int
+  producto   Producto @relation(fields: [productoId], references: [id])
+  productoId Int
+}
+
+model PedidoSalsa {
+  id       Int    @id @default(autoincrement())
+  pedido   Pedido @relation(fields: [pedidoId], references: [id])
+  pedidoId Int
+  salsa    Salsa  @relation(fields: [salsaId], references: [id])
+  salsaId  Int
+}
+
