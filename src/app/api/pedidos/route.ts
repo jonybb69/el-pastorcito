@@ -1,20 +1,61 @@
-import { NextApiRequest, NextApiResponse } from 'next'
+import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
 
-// Suponiendo que el pedido es un objeto enviado al backend
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method === 'POST') {
-    try {
-      const { pedido } = req.body
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
 
-      // Aquí procesamos el pedido, por ejemplo, lo guardamos en la base de datos
-
-      // Redirigir al administrador después de crear el pedido
-      res.status(200).json({ message: 'Pedido enviado correctamente' })
-
-    } catch (error) {
-      res.status(500).json({ message: 'Hubo un error al enviar el pedido' })
+    // Validación general
+    if (!body || !body.clienteId || !body.metodoPago || !Array.isArray(body.productos)) {
+      return new NextResponse("Datos incompletos para crear el pedido", { status: 400 });
     }
-  } else {
-    res.status(405).json({ message: 'Método no permitido' })
+
+    const clienteId = Number(body.clienteId);
+    const metodoPago = body.metodoPago;
+    const productos = body.productos;
+
+    if (isNaN(clienteId)) {
+      return new NextResponse("clienteId inválido", { status: 400 });
+    }
+
+    if (!productos.length) {
+      return new NextResponse("No hay productos en el pedido", { status: 400 });
+    }
+
+    for (const item of productos) {
+      if (
+        !item.productoId || isNaN(Number(item.productoId)) ||
+        !item.cantidad || isNaN(Number(item.cantidad)) ||
+        !item.precio || isNaN(Number(item.precio))
+      ) {
+        return new NextResponse("Producto inválido en la lista", { status: 400 });
+      }
+    }
+
+    // Crear el pedido
+    const pedido = await prisma.pedido.create({
+      data: {
+        clienteId: clienteId,
+        metodoPago: metodoPago,
+        creadoEn: new Date(),
+      },
+    });
+
+    // Crear los registros en pedidoProducto
+    for (const item of productos) {
+      await prisma.pedidoProducto.create({
+        data: {
+          pedidoId: pedido.id,
+          productoId: Number(item.productoId),
+          cantidad: Number(item.cantidad),
+          precio: Number(item.precio),
+        },
+      });
+    }
+
+    return NextResponse.json({ mensaje: "Pedido creado con éxito", pedido });
+  } catch (error) {
+    console.error("Error al crear el pedido:", error);
+    return new NextResponse("Error al crear el pedido", { status: 500 });
   }
 }

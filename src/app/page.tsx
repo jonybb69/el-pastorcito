@@ -6,34 +6,34 @@ import { motion } from 'framer-motion'
 
 export default function HomePage() {
   return (
-    <section className="flex flex-col items-center justify-center text-center min-h-[70vh] gap-6">
+    <section className="flex flex-col items-center justify-center text-center min-h-[60vh] gap-10">
        {/* ✅ Logo como marca de agua centrada */}
        <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 3 }}
-        className="absolute inset-0 z-0 flex justify-center items-center pointer-events-none"
+        initial={{ opacity: 0, scale: 0.6 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 3.5, delay:0.5 }}
+        className="absolute inset-0 z-0 flex items-center justify-self min-h-[95vh]  gap-8"
       >
         <img
           src="/logo-4.png"
           alt="Marca de agua El Pastorcito"
-          className="w-[60%] max-w-6xl object-contain blur-[3px]"
+          className="w-[36%] flex max-w-2xl blur-[0px] gap-8"
         />
       </motion.div>
       <motion.h1
-        initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y: 100 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 2.5 }}
-        className="text-4xl sm:text-5xl font-bold text-white drop-shadow"
+        className="text-5xl sm:text-1.2xl font-bold text-white drop-shadow gao-8"
       >
         ¡Bienvenido a El Pastorcito! 🌮
       </motion.h1>
 
       <motion.p
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, y: -80 }}
+        animate={{ opacity: 2, y: 1 }}
         transition={{ duration: 1.5, delay: 0.5 }}
-        className="text-white/80 max-w-xl drop-shadow"
+        className="font-semibold text-white sm:text-1.1xl  max-w-xl drop-shadow grap-8"
       >
         Disfruta de los mejores tacos y antojitos desde la comodidad de tu hogar.  
         Haz tu pedido fácil, rápido y con el sabor que tanto te gusta.
@@ -41,21 +41,22 @@ export default function HomePage() {
 
       <motion.div
         initial={{ opacity: 0, scale: 2 }}
-        animate={{ opacity: 0.9, scale: 1.2 }}
-        transition={{ duration: 1.5, delay: 0.9 }}
-        className="flex flex-col sm:flex-row gap-6"
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 1.5, delay: 0.5 }}
+        className="font-bold flex flex-col sm:flex-2xl gap-6"
       >
         <Link href="/nuevo-cliente">
-          <Button className="bg-red-600 hover:bg-yellow-500 text-white font-semibold px-6 py-3 rounded-2xl shadow-md transition">
-            Soy nuevo 🍽️
+          <Button className="bg-red-700 hover:bg-orange-600 font-semibold text-white px-6 py-7 rounded-2xl drop-shadow transition-colors">
+            Registrarme Para Pedir 🍽️
           </Button>
         </Link>
 
-        <Link href="/cliente-registrado">
-          <Button className="bg-yellow-500 hover:bg-red-600 text-white font-semibold px-6 py-3 rounded-2xl shadow-md transition">
-            Ya tengo número 📱
-          </Button>
-        </Link>
+        <Link href="/clientes/login">
+          <Button className="bg-orange-600 hover:bg-red-700 font-semibold text-white px-6 py-7 rounded-2xl drop-shadow transition-colors">
+            Ingresar Con El Celular 📱
+         </Button>
+       </Link>
+
       </motion.div>
     </section>
   )

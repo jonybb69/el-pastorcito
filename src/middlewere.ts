@@ -1,24 +1,34 @@
-// middleware.ts
 import { NextRequest, NextResponse } from 'next/server'
-import jwt from 'jsonwebtoken'
+import { verify } from 'jsonwebtoken'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'elPastorcitoSuperSecreto'
 
-export function middleware(request: NextRequest) {
-  const token = request.cookies.get('auth-token')?.value
+export function middleware(req: NextRequest) {
+  const token = req.cookies.get('auth-token')?.value
 
-  if (!token) {
-    return NextResponse.redirect(new URL('/admin', request.url))
+  const protectedPaths = ['/admin/dashboard', '/admin/productos']
+
+  const isProtected = protectedPaths.some((path) => req.nextUrl.pathname.startsWith(path))
+
+  if (isProtected) {
+    if (!token) {
+      return NextResponse.redirect(new URL('/admin', req.url))
+    }
+
+    try {
+      verify(token, JWT_SECRET)
+      // Token válido: continua normalmente
+      return NextResponse.next()
+    } catch (error) {
+      console.error('Token inválido o expirado:', error)
+      return NextResponse.redirect(new URL('/admin', req.url))
+    }
   }
 
-  try {
-    jwt.verify(token, JWT_SECRET)
-    return NextResponse.next()
-  } catch {
-    return NextResponse.redirect(new URL('/admin', request.url))
-  }
+  return NextResponse.next()
 }
 
+// Aplicar el middleware solo a rutas específicas:
 export const config = {
-  matcher: ['/admin/dashboard'],
+  matcher: ['/admin/:path*'],
 }
