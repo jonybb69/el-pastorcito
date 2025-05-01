@@ -1,80 +1,130 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/input'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
-export default function InicioSesionCliente() {
-  const [telefono, setTelefono] = useState('')
-  const [error, setError] = useState('')
-  const router = useRouter()
+interface Cliente {
+  id: string
+  nombre: string
+  telefono: string
+  direccion: string
+}
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+export default function InicioSesionPage() {
+  const [clientes, setClientes] = useState<Cliente[]>([])
+  const [editando, setEditando] = useState<Cliente | null>(null)
+  const [cargando, setCargando] = useState(false)
 
-    if (!telefono.trim()) {
-      setError('Por favor ingresa tu número de celular.')
-      return
+  const fetchClientes = async () => {
+    const res = await fetch('/api/clientes')
+    const data = await res.json()
+    setClientes(data)
+  }
+
+  useEffect(() => {
+    fetchClientes()
+  }, [])
+
+  const handleEliminar = async (id: string) => {
+    const confirm = window.confirm('¿Eliminar este cliente?')
+    if (!confirm) return
+
+    const res = await fetch(`/api/clientes/${id}`, {
+      method: 'DELETE',
+    })
+
+    if (res.ok) {
+      toast.success('Cliente eliminado')
+      fetchClientes()
+    } else {
+      toast.error('Error al eliminar')
     }
+  }
 
-    try {
-      // Aquí puedes validar con tu backend si el número existe
-      const res = await fetch('/api/clientes/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telefono }),
-      })
+  const handleGuardar = async () => {
+    if (!editando) return
+    const res = await fetch(`/api/clientes/${editando.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editando),
+    })
 
-      if (!res.ok) {
-        throw new Error('Número no registrado.')
-      }
-
-      // Redirección al menú
-      router.push('/menu')
-    } catch (err) {
-      setError('Número no registrado o error en la conexión.')
+    if (res.ok) {
+      toast.success('Cliente actualizado')
+      setEditando(null)
+      fetchClientes()
+    } else {
+      toast.error('Error al actualizar')
     }
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] px-4">
-      <motion.h2
-        initial={{ opacity: 0, y: -50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        className="text-3xl sm:text-4xl font-bold text-white mb-6 text-center"
-      >
-        Inicia sesión con tu celular 📱
-      </motion.h2>
+    <section className="max-w-3xl mx-auto mt-20 bg-white p-6 rounded-xl shadow-xl">
+      <h1 className="text-2xl font-bold text-red-600 mb-6 text-center">Gestión de Clientes</h1>
 
-      <motion.form
-        onSubmit={handleSubmit}
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.9 }}
-        className="bg-white/10 backdrop-blur-md p-6 rounded-2xl shadow-xl w-full max-w-md space-y-5"
-      >
-        <Input
-          type="tel"
-          placeholder="Tu número de celular"
-          value={telefono}
-          onChange={(e) => setTelefono(e.target.value)}
-          className="bg-white text-black font-semibold placeholder-gray-500"
-        />
+      {clientes.length === 0 && <p className="text-center text-gray-500">No hay clientes aún.</p>}
 
-        {error && (
-          <p className="text-red-500 text-sm font-semibold">{error}</p>
-        )}
-
-        <Button
-          type="submit"
-          className="w-full bg-red-700 hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-xl transition duration-300"
-        >
-          Entrar al menú 🍴
-        </Button>
-      </motion.form>
-    </div>
+      <ul className="space-y-4">
+        {clientes.map(cliente => (
+          <li key={cliente.id} className="bg-yellow-400 p-4 rounded-xl shadow">
+            {editando?.id === cliente.id ? (
+              <div className="space-y-2">
+                <input
+                  className="w-full p-2 border rounded"
+                  value={editando.nombre}
+                  onChange={e => setEditando({ ...editando, nombre: e.target.value })}
+                />
+                <input
+                  className="w-full p-2 border rounded"
+                  value={editando.telefono}
+                  onChange={e => setEditando({ ...editando, telefono: e.target.value })}
+                />
+                <textarea
+                  className="w-full p-2 border rounded"
+                  value={editando.direccion}
+                  onChange={e => setEditando({ ...editando, direccion: e.target.value })}
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleGuardar}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
+                  >
+                    Guardar
+                  </button>
+                  <button
+                    onClick={() => setEditando(null)}
+                    className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="font-semibold">{cliente.nombre}</p>
+                  <p>{cliente.telefono}</p>
+                  <p className="text-sm text-gray-700">{cliente.direccion}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setEditando(cliente)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => handleEliminar(cliente.id)}
+                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }

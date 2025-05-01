@@ -51,7 +51,7 @@ export default function HomePage() {
           </Button>
         </Link>
 
-        <Link href="/inicio-sesion">
+        <Link href="/clientes/login">
           <Button className="bg-orange-600 hover:bg-red-700 font-semibold text-white px-6 py-7 rounded-2xl drop-shadow transition-colors">
             Ingresar Con El Celular 📱
          </Button>

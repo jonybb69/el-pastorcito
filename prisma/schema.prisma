@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -22,18 +16,19 @@ model Cliente {
 }
 
 model Producto {
-  id      Int      @id @default(autoincrement())
-  nombre  String
-  precio  Float
-  pedidos PedidoProducto[]
-  imagen   String
-  creadoEn DateTime @default(now())
+  id          Int               @id @default(autoincrement())
+  nombre      String
+  precio      Float
+  pedidos     PedidoProducto[]
+  descripcion String 
+  imagen      String
+  creadoEn    DateTime          @default(now())
 }
 
 model Salsa {
-  id      Int      @id @default(autoincrement())
-  nombre  String
-  pedidos PedidoSalsa[]
+  id             Int             @id @default(autoincrement())
+  nombre         String
+  pedidosSalsas  PedidoSalsa[]   // Relación inversa a PedidoSalsa
 }
 
 model Pedido {
@@ -41,25 +36,26 @@ model Pedido {
   cliente    Cliente           @relation(fields: [clienteId], references: [id])
   clienteId  Int
   productos  PedidoProducto[]
-  salsas     PedidoSalsa[]
   comentario String?
   metodoPago String
   creadoEn   DateTime          @default(now())
 }
 
 model PedidoProducto {
-  id         Int      @id @default(autoincrement())
-  pedido     Pedido   @relation(fields: [pedidoId], references: [id])
+  id         Int             @id @default(autoincrement())
+  pedido     Pedido          @relation(fields: [pedidoId], references: [id])
   pedidoId   Int
-  producto   Producto @relation(fields: [productoId], references: [id])
+  producto   Producto        @relation(fields: [productoId], references: [id])
   productoId Int
+  cantidad   Int
+  precio     Float
+  salsas     PedidoSalsa[]   // Relación inversa a PedidoSalsa
 }
 
 model PedidoSalsa {
-  id       Int    @id @default(autoincrement())
-  pedido   Pedido @relation(fields: [pedidoId], references: [id])
-  pedidoId Int
-  salsa    Salsa  @relation(fields: [salsaId], references: [id])
-  salsaId  Int
+  id                Int             @id @default(autoincrement())
+  productoPedido    PedidoProducto @relation(fields: [productoPedidoId], references: [id])
+  productoPedidoId  Int
+  salsa             Salsa          @relation(fields: [salsaId], references: [id])
+  salsaId           Int
 }
-

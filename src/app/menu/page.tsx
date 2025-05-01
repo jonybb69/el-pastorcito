@@ -1,131 +1,167 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
-import { usePedidoStore } from '@/store/usePedidoStore';
-import { useClientStore } from '@/store/useClientStore';
 import Image from 'next/image';
 import { toast } from 'sonner';
+import { usePedidoStore } from '@/store/usePedidoStore';
 
-// Define tipo ProductoSeleccionado
-type ProductoSeleccionado = {
+// Tipo para productos que vienen de la API
+type Producto = {
   id: number;
   nombre: string;
-  salsas: string[];
-  cantidad: number;
   precio: number;
+  imagen: string;
 };
 
-const productos = [
-  {
-    id: 1,
-    nombre: 'Tacos al Pastor',
-    precio: 18,
-    imagen: '/productos/tacos-al-pastor.jpg',
-  },
-  {
-    id: 2,
-    nombre: 'Gringa de Bistec',
-    precio: 30,
-    imagen: '/productos/gringa-bistec.jpg',
-  },
-  {
-    id: 3,
-    nombre: 'Arrachera',
-    precio: 40,
-    imagen: '/productos/arrachera.jpg',
-  },
-  {
-    id: 4,
-    nombre: 'Torta de Pastor',
-    precio: 35,
-    imagen: '/productos/torta-pastor.jpg',
-  },
-  {
-    id: 5,
-    nombre: 'Quesadilla de Bistec',
-    precio: 28,
-    imagen: '/productos/quesadilla-bistec.jpg',
-  },
-  {
-    id: 6,
-    nombre: 'Costra de Pastor',
-    precio: 32,
-    imagen: '/productos/costra-pastor.jpg',
-  },
-];
-
-const salsasDisponibles = ['Verde', 'Roja', 'Mango Habanero', 'Ninguna'];
+type Salsa = {
+  id: number;
+  nombre: string;
+};
 
 export default function MenuPage() {
-  const [pedido, setPedido] = useState<ProductoSeleccionado[]>([]);
-  const router = useRouter();
-  const { cliente } = useClientStore();
+  const {
+    cliente,
+    productos: productosSeleccionados,
+    addProducto,
+    removeProducto,
+    setMetodoPago,
+    metodoPago,
+  } = usePedidoStore();
 
-  const toggleProducto = (producto: { id: number; nombre: string; precio: number }) => {
-    const existe = pedido.find((item) => item.id === producto.id);
+  const router = useRouter();
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [salsasDisponibles, setSalsasDisponibles] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchProductos = async () => {
+      try {
+        const res = await fetch('/api/productos');
+        if (!res.ok) throw new Error('Error al obtener productos');
+        const data = await res.json();
+        setProductos(data);
+      } catch (error) {
+        console.error('Error al cargar productos:', error);
+        toast.error('Error al cargar productos');
+      }
+    };
+
+    const fetchSalsas = async () => {
+      try {
+        const res = await fetch('/api/salsas');
+        if (!res.ok) throw new Error('Error al obtener salsas');
+        const data = await res.json();
+        setSalsasDisponibles(data.map((salsa: Salsa) => salsa.nombre));
+      } catch (error) {
+        console.error('Error al cargar salsas:', error);
+        toast.error('Error al cargar salsas');
+      }
+    };
+
+    fetchProductos();
+    fetchSalsas();
+  }, []);
+
+  const toggleProducto = (producto: Producto) => {
+    const existe = productosSeleccionados.find((item) => item.id === producto.id);
     if (existe) {
-      setPedido(pedido.filter((item) => item.id !== producto.id));
+      const index = productosSeleccionados.findIndex((item) => item.id === producto.id);
+      removeProducto(index);
     } else {
-      setPedido([
-        ...pedido,
-        { id: producto.id, nombre: producto.nombre, salsas: [], cantidad: 1, precio: producto.precio },
-      ]);
+      const nuevoProducto = {
+        id: producto.id,
+        nombre: producto.nombre,
+        producto: {
+          id: String(producto.id),
+          nombre: producto.nombre,
+          precio: producto.precio,
+        },
+        cantidad: 1,
+        salsas: [],
+      };
+      addProducto(nuevoProducto);
     }
   };
 
   const toggleSalsa = (productoId: number, salsa: string) => {
-    setPedido((prev) =>
-      prev.map((item) =>
-        item.id === productoId
-          ? {
-              ...item,
-              salsas: item.salsas.includes(salsa)
-                ? item.salsas.filter((s) => s !== salsa)
-                : [...item.salsas, salsa],
-            }
-          : item
-      )
-    );
+    const index = productosSeleccionados.findIndex((item) => item.id === productoId);
+    if (index !== -1) {
+      const producto = productosSeleccionados[index];
+      const nuevasSalsas = producto.salsas.includes(salsa)
+        ? producto.salsas.filter((s) => s !== salsa)
+        : [...producto.salsas, salsa];
+
+      removeProducto(index);
+      addProducto({ ...producto, salsas: nuevasSalsas });
+    }
   };
 
   const enviarPedido = async () => {
-    if (!cliente || !cliente.id) {
-      toast.error('Debes registrarte antes de pedir');
-      return;
-    }
-
-    if (pedido.length === 0) {
-      toast.error('Selecciona al menos un producto');
-      return;
-    }
-
     try {
-      const res = await fetch('/api/pedidos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clienteId: cliente.id,
-          productos: pedido.map((item) => ({
-            productoId: item.id,
-            cantidad: item.cantidad,
-            salsas: item.salsas,
-          })),
-          metodoPago: 'efectivo',
-        }),
+      // Ejemplo de estructura que podrías tener
+      const datosPedido = {
+        cliente, // por ejemplo: 3
+        metodoPago, // por ejemplo: 'efectivo'
+        productos: productosSeleccionados.map(item => ({
+          productoId: item.id,
+          cantidad: item.cantidad,
+          precio: item.producto.precio, // Accessing the precio from the nested producto object
+        })),
+      };
+  
+      // ✅ Validación de cliente
+      if (!datosPedido.cliente || isNaN(Number(datosPedido.cliente))) {
+        toast.error("Cliente inválido");
+        return;
+      }
+  
+      // ✅ Validación de método de pago
+      if (!datosPedido.metodoPago) {
+        toast.error("Selecciona un método de pago");
+        return;
+      }
+  
+      // ✅ Validación de productos
+      if (!Array.isArray(datosPedido.productos) || datosPedido.productos.length === 0) {
+        toast.error("Agrega al menos un producto al pedido");
+        return;
+      }
+  
+      for (const item of datosPedido.productos) {
+        if (
+          !item.productoId || isNaN(Number(item.productoId)) ||
+          !item.cantidad || isNaN(Number(item.cantidad)) ||
+          !item.precio || isNaN(Number(item.precio))
+        ) {
+          toast.error("Producto con datos inválidos");
+          return;
+        }
+      }
+  
+      // ✅ Enviar pedido si pasa la validación
+      const res = await fetch("/api/pedidos", {
+        method: "POST",
+        body: JSON.stringify(datosPedido),
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
-
-      if (!res.ok) throw new Error('Error al enviar el pedido');
-
-      toast.success('¡Pedido enviado con éxito!');
-      router.push('/pedido-enviado');
-    } catch (error) {
-      console.error(error);
-      toast.error('Error al enviar el pedido');
+  
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Error al enviar el pedido");
+      }
+  
+      toast.success("¡Pedido enviado con éxito!");
+      router.push("/resumen");
+    } catch (error: any) {
+      console.error("Error al enviar el pedido:", error);
+      toast.error(error.message || "Error inesperado");
     }
   };
+  
 
   return (
     <section className="max-w-6xl mx-auto p-6 pt-12 text-white">
@@ -135,12 +171,12 @@ export default function MenuPage() {
         transition={{ duration: 0.6 }}
         className="text-4xl font-bold text-yellow-400 text-center mb-12 drop-shadow-lg"
       >
-        Elige tus Antojitos 🌮
+        Elige tus Platillos 🌮
       </motion.h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {productos.map((producto) => {
-          const seleccionado = pedido.find((p) => p.id === producto.id);
+          const seleccionado = productosSeleccionados.find((p) => p.id === producto.id);
 
           return (
             <motion.div
@@ -151,16 +187,12 @@ export default function MenuPage() {
               viewport={{ once: true }}
               transition={{ duration: 0.4 }}
               className={`rounded-2xl overflow-hidden shadow-xl border-2 cursor-pointer backdrop-blur-md group transition-all
-                ${
-                  seleccionado
-                    ? 'border-yellow-400 bg-yellow-500/10'
-                    : 'border-white/10 bg-white/5 hover:border-yellow-400 hover:shadow-yellow-400/30'
-                }
+                ${seleccionado ? 'border-yellow-400 bg-yellow-500/10' : 'border-white/10 bg-white/5 hover:border-yellow-400 hover:shadow-yellow-400/30'}
               `}
             >
               <label className="block">
                 <Image
-                  src={producto.imagen}
+                  src={`/productos/${producto.imagen}`}
                   alt={producto.nombre}
                   width={600}
                   height={400}
@@ -195,11 +227,9 @@ export default function MenuPage() {
                         type="button"
                         onClick={() => toggleSalsa(producto.id, salsa)}
                         className={`px-3 py-1 rounded-full border text-xs transition-all
-                          ${
-                            seleccionado.salsas.includes(salsa)
-                              ? 'bg-yellow-500 text-black border-yellow-400'
-                              : 'bg-black/30 text-white/70 border-white/10 hover:border-white/20'
-                          }
+                          ${seleccionado.salsas.includes(salsa)
+                            ? 'bg-yellow-500 text-black border-yellow-400'
+                            : 'bg-black/30 text-white/70 border-white/10 hover:border-white/20'}
                         `}
                       >
                         {salsa}

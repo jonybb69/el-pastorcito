@@ -11,6 +11,7 @@ export default function AdminLogin() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const login = useAuthStore((state) => state.login)
+  const token = useAuthStore((state) => state.token)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -1,32 +1,17 @@
-// /app/api/pedidos/[id]/route.ts
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-export async function GET(
-  _req: Request,
-  { params }: { params: { id: string } }
+export async function DELETE(
+  req: Request,
+  { params }: { params: { id: string } } // destructura correctamente aquí
 ) {
+  const id = Number(params.id);
+
   try {
-    const pedido = await prisma.pedido.findUnique({
-      where: { id: params.id },
-      include: {
-        cliente: true,
-        productos: {
-          include: {
-            producto: true,
-            salsas: true,
-          },
-        },
-      },
-    })
-
-    if (!pedido) {
-      return NextResponse.json({ error: 'Pedido no encontrado' }, { status: 404 })
-    }
-
-    return NextResponse.json(pedido)
+    await prisma.cliente.delete({ where: { id } });
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error(error)
-    return NextResponse.json({ error: 'Error al obtener el pedido' }, { status: 500 })
+    console.error('Error al eliminar cliente:', error);
+    return NextResponse.json({ error: 'No se pudo eliminar el cliente' }, { status: 500 });
   }
 }

@@ -1,68 +1,61 @@
-// src/app/api/pedidos/route.ts
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const {
-      clienteId,
-      productos, // [{ productoId, cantidad, salsas: [salsaId, salsaId] }]
-      metodoPago,
-    } = body;
 
-    if (!clienteId || !productos || productos.length === 0) {
-      return NextResponse.json({ error: 'Datos incompletos' }, { status: 400 });
+    // Validación general
+    if (!body || !body.clienteId || !body.metodoPago || !Array.isArray(body.productos)) {
+      return new NextResponse("Datos incompletos para crear el pedido", { status: 400 });
     }
 
-    const productosDB = await prisma.producto.findMany({
-      where: { id: { in: productos.map((p: { productoId: any; }) => p.productoId) } },
-    });
-    const salsasDB = await prisma.salsa.findMany({
-      where: { id: { in: productos.flatMap((p: { salsas: any; }) => p.salsas) } },
-    });
-    
-    const productosInvalidos = productos.some((p: { productoId: any; }) => !productosDB.find((prod: { id: any; }) => prod.id === p.productoId));
-    const salsasInvalidas = productos.some((p: { salsas: any[]; }) =>
-      p.salsas.some(salsaId => !salsasDB.find((s: { id: any; }) => s.id === salsaId))
-    );
-    
-    if (productosInvalidos || salsasInvalidas) {
-      return NextResponse.json({ error: 'Productos o salsas inválidas' }, { status: 400 });
-    }
-    
+    const clienteId = Number(body.clienteId);
+    const metodoPago = body.metodoPago;
+    const productos = body.productos;
 
+    if (isNaN(clienteId)) {
+      return new NextResponse("clienteId inválido", { status: 400 });
+    }
+
+    if (!productos.length) {
+      return new NextResponse("No hay productos en el pedido", { status: 400 });
+    }
+
+    for (const item of productos) {
+      if (
+        !item.productoId || isNaN(Number(item.productoId)) ||
+        !item.cantidad || isNaN(Number(item.cantidad)) ||
+        !item.precio || isNaN(Number(item.precio))
+      ) {
+        return new NextResponse("Producto inválido en la lista", { status: 400 });
+      }
+    }
+
+    // Crear el pedido
     const pedido = await prisma.pedido.create({
       data: {
-        clienteId,
-        metodoPago,
-        productos: {
-          create: productos.map((prod: any) => ({
-            productoId: prod.productoId,
-            cantidad: prod.cantidad,
-            salsas: {
-              connect: prod.salsas.map((id: string) => ({ id })),
-            },
-          })),
-        },
-      },
-      include: {
-        productos: {
-          include: {
-            producto: true,
-            salsas: true,
-          },
-        },
-        cliente: true,
+        clienteId: clienteId,
+        metodoPago: metodoPago,
+        creadoEn: new Date(),
       },
     });
 
-    return NextResponse.json(pedido, { status: 201 });
-  } catch (error) {
-  
-    console.error(error);
-    return NextResponse.json({ error: 'Error al crear el pedido' }, { status: 500 });
-  }
+    // Crear los registros en pedidoProducto
+    for (const item of productos) {
+      await prisma.pedidoProducto.create({
+        data: {
+          pedidoId: pedido.id,
+          productoId: Number(item.productoId),
+          cantidad: Number(item.cantidad),
+          precio: Number(item.precio),
+        },
+      });
+    }
 
-  
+    return NextResponse.json({ mensaje: "Pedido creado con éxito", pedido });
+  } catch (error) {
+    console.error("Error al crear el pedido:", error);
+    return new NextResponse("Error al crear el pedido", { status: 500 });
+  }
 }
