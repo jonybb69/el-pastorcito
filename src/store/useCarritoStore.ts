@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 // Tipo para los productos en el carrito
 interface ProductoEnCarrito {
+  producto: any;
   id: number;
   nombre: string;
   precio: number;
@@ -18,6 +19,7 @@ interface CarritoState {
   agregarProducto: (producto: ProductoEnCarrito) => void;
   eliminarProducto: (productoId: number) => void;
   vaciarCarrito: () => void;
+  setCarrito: (productos: ProductoEnCarrito[]) => void; // Add this line
 }
 
 export const useCarritoStore = create<CarritoState>((set) => ({
@@ -49,4 +51,17 @@ export const useCarritoStore = create<CarritoState>((set) => ({
     set((state) => ({
       productos: state.carrito.map((producto) => producto.nombre),
     })),
+
+  setCarrito: (productos) => set({ carrito: productos }), // Implement setCarrito
 }));
+
+export const useCarritoStorePersisted = () => {
+  const { agregarProducto, eliminarProducto, vaciarCarrito } =
+    useCarritoStore();
+
+  return {
+    agregarProducto,
+    eliminarProducto,
+    vaciarCarrito,
+  };
+};

@@ -33,17 +33,19 @@ model Salsa {
 
 model Pedido {
   id         Int               @id @default(autoincrement())
-  cliente    Cliente           @relation(fields: [clienteId], references: [id])
+  cliente    Cliente           @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   clienteId  Int
   productos  PedidoProducto[]
   comentario String?
   metodoPago String
   creadoEn   DateTime          @default(now())
+  estado   String @default("pendiente")
+
 }
 
 model PedidoProducto {
   id         Int             @id @default(autoincrement())
-  pedido     Pedido          @relation(fields: [pedidoId], references: [id])
+  pedido     Pedido          @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
   pedidoId   Int
   producto   Producto        @relation(fields: [productoId], references: [id])
   productoId Int
@@ -54,7 +56,7 @@ model PedidoProducto {
 
 model PedidoSalsa {
   id                Int             @id @default(autoincrement())
-  productoPedido    PedidoProducto @relation(fields: [productoPedidoId], references: [id])
+  productoPedido    PedidoProducto @relation(fields: [productoPedidoId], references: [id], onDelete: Cascade)
   productoPedidoId  Int
   salsa             Salsa          @relation(fields: [salsaId], references: [id])
   salsaId           Int

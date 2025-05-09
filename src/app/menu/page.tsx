@@ -99,69 +99,41 @@ export default function MenuPage() {
   };
 
   const enviarPedido = async () => {
+    if (!cliente || !cliente.id) {
+      toast.error('Debes registrarte antes de pedir');
+      return;
+    }
+
+    if (productosSeleccionados.length === 0) {
+      toast.error('Selecciona al menos un producto');
+      return;
+    }
+
     try {
-      // Ejemplo de estructura que podrías tener
-      const datosPedido = {
-        cliente, // por ejemplo: 3
-        metodoPago, // por ejemplo: 'efectivo'
-        productos: productosSeleccionados.map(item => ({
-          productoId: item.id,
-          cantidad: item.cantidad,
-          precio: item.producto.precio, // Accessing the precio from the nested producto object
-        })),
-      };
-  
-      // ✅ Validación de cliente
-      if (!datosPedido.cliente || isNaN(Number(datosPedido.cliente))) {
-        toast.error("Cliente inválido");
-        return;
-      }
-  
-      // ✅ Validación de método de pago
-      if (!datosPedido.metodoPago) {
-        toast.error("Selecciona un método de pago");
-        return;
-      }
-  
-      // ✅ Validación de productos
-      if (!Array.isArray(datosPedido.productos) || datosPedido.productos.length === 0) {
-        toast.error("Agrega al menos un producto al pedido");
-        return;
-      }
-  
-      for (const item of datosPedido.productos) {
-        if (
-          !item.productoId || isNaN(Number(item.productoId)) ||
-          !item.cantidad || isNaN(Number(item.cantidad)) ||
-          !item.precio || isNaN(Number(item.precio))
-        ) {
-          toast.error("Producto con datos inválidos");
-          return;
-        }
-      }
-  
-      // ✅ Enviar pedido si pasa la validación
-      const res = await fetch("/api/pedidos", {
-        method: "POST",
-        body: JSON.stringify(datosPedido),
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const res = await fetch('/api/pedidos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clienteId: cliente.id,
+          productos: productosSeleccionados.map((item) => ({
+            productoId: item.producto.id,
+            cantidad: item.cantidad,
+            salsas: item.salsas,
+            precio: item.producto.precio,
+          })),
+          metodoPago: metodoPago || 'efectivo',
+        }),
       });
-  
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "Error al enviar el pedido");
-      }
-  
-      toast.success("¡Pedido enviado con éxito!");
-      router.push("/resumen");
-    } catch (error: any) {
-      console.error("Error al enviar el pedido:", error);
-      toast.error(error.message || "Error inesperado");
+
+      if (!res.ok) throw new Error('Error al enviar el pedido');
+
+      toast.success('¡Pedido enviado con éxito!');
+      router.push('/ticket');
+    } catch (error) {
+      console.error('Error al enviar pedido:', error);
+      toast.error('Error al enviar el pedido');
     }
   };
-  
 
   return (
     <section className="max-w-6xl mx-auto p-6 pt-12 text-white">

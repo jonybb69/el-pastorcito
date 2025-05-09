@@ -59,3 +59,53 @@ export async function POST(req: Request) {
     return new NextResponse("Error al crear el pedido", { status: 500 });
   }
 }
+
+export async function GET() {
+  try {
+    const pedidos = await prisma.pedido.findMany({
+      orderBy: { creadoEn: 'desc' },
+      include: {
+        cliente: {
+          select: {
+            nombre: true,
+            telefono: true,
+            direccion: true,
+          },
+        },
+        productos: {
+          include: {
+            producto: {
+              select: { nombre: true },
+            },
+            salsas: {
+              include: {
+                salsa: {
+                  select: { nombre: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const pedidosFormateados = pedidos.map((pedido) => ({
+      pedidoId: pedido.id,
+      numeroPedido: `#${pedido.id.toString().padStart(5, '0')}`,
+      fecha: pedido.creadoEn,
+      cliente: pedido.cliente,
+      productos: pedido.productos.map((pp) => ({
+        id: pp.productoId,
+        nombre: pp.producto.nombre,
+        cantidad: pp.cantidad,
+        precio: pp.precio,
+        salsas: pp.salsas.map((s) => s.salsa.nombre),
+      })),
+    }));
+
+    return NextResponse.json({ pedidos: pedidosFormateados });
+  } catch (error) {
+    console.error("Error al obtener los pedidos:", error);
+    return new NextResponse("Error al obtener los pedidos", { status: 500 });
+  }
+}

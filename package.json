@@ -20,6 +20,7 @@
     "cookie": "^1.0.2",
     "dotenv": "^16.5.0",
     "framer-motion": "^12.9.2",
+    "html2pdf.js": "^0.10.3",
     "jsonwebtoken": "^9.0.2",
     "lightningcss": "^1.29.3",
     "lucide-react": "^0.503.0",
