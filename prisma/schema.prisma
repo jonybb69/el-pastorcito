@@ -1,18 +1,27 @@
-generator client {
-  provider = "prisma-client-js"
-}
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
+} 
+
+generator client {
+  provider = "prisma-client-js"
 }
 
 model Cliente {
-  id        Int      @id @default(autoincrement())
-  nombre    String
-  telefono  String   @unique
-  direccion String
-  pedidos   Pedido[]
+  id             Int      @id @default(autoincrement())
+  nombre         String
+  telefono       String   @unique
+  direccion      String
+  pedidos        Pedido[]
+  destacado      Boolean  @default(false)
+  creadoEn       DateTime @default(now())
+  actualizadoEn  DateTime? @updatedAt
 }
 
 model Producto {
@@ -23,24 +32,27 @@ model Producto {
   descripcion String 
   imagen      String
   creadoEn    DateTime          @default(now())
+  categoria   String            @default("sin-categoria")
 }
 
 model Salsa {
   id             Int             @id @default(autoincrement())
   nombre         String
   pedidosSalsas  PedidoSalsa[]   // Relación inversa a PedidoSalsa
+  nivelPicor     String?
+  imagen         String
 }
 
 model Pedido {
-  id         Int               @id @default(autoincrement())
-  cliente    Cliente           @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  clienteId  Int
-  productos  PedidoProducto[]
-  comentario String?
-  metodoPago String
-  creadoEn   DateTime          @default(now())
-  estado   String @default("pendiente")
-
+  id           Int               @id @default(autoincrement())
+  cliente      Cliente           @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  clienteId    Int
+  numeroPedido String?           // Add this field if missing
+  productos    PedidoProducto[]
+  comentario   String?
+  metodoPago   String
+  creadoEn     DateTime          @default(now())
+  estado       String
 }
 
 model PedidoProducto {

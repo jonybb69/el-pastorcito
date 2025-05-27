@@ -1,6 +1,6 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
-// Tipo para los productos en el carrito
 interface ProductoEnCarrito {
   producto: any;
   id: number;
@@ -10,58 +10,37 @@ interface ProductoEnCarrito {
   cantidad: number;
 }
 
-// Tipo para el estado del carrito
 interface CarritoState {
-  limpiarCarrito: any;
-  total: any;
-  productos: any;
   carrito: ProductoEnCarrito[];
   agregarProducto: (producto: ProductoEnCarrito) => void;
   eliminarProducto: (productoId: number) => void;
   vaciarCarrito: () => void;
-  setCarrito: (productos: ProductoEnCarrito[]) => void; // Add this line
+  setCarrito: (productos: ProductoEnCarrito[]) => void;
+  productos: ProductoEnCarrito[];
+  total: number;
+  limpiarCarrito: () => void;
 }
 
-export const useCarritoStore = create<CarritoState>((set) => ({
-  carrito: [],
-
-  agregarProducto: (producto) =>
-    set((state) => ({
-      carrito: [...state.carrito, producto],
-    })),
-
-  eliminarProducto: (productoId) =>
-    set((state) => ({
-      carrito: state.carrito.filter((producto) => producto.id !== productoId),
-    })),
-
-  vaciarCarrito: () => set({ carrito: [] }),
-
-  limpiarCarrito: () => set({ carrito: [] }),
-
-  total: () =>
-    set((state) => ({
-      total: state.carrito.reduce(
-        (acc, producto) => acc + producto.precio * producto.cantidad,
-        0
-      ),
-    })),
-
-  productos: () =>
-    set((state) => ({
-      productos: state.carrito.map((producto) => producto.nombre),
-    })),
-
-  setCarrito: (productos) => set({ carrito: productos }), // Implement setCarrito
-}));
-
-export const useCarritoStorePersisted = () => {
-  const { agregarProducto, eliminarProducto, vaciarCarrito } =
-    useCarritoStore();
-
-  return {
-    agregarProducto,
-    eliminarProducto,
-    vaciarCarrito,
-  };
-};
+export const useCarritoStore = create<CarritoState>()(
+  persist(
+    (set) => ({
+      productos: [],
+  total: 0,
+  limpiarCarrito: () => set({ productos: [], total: 0 }),
+      carrito: [],
+      agregarProducto: (producto) =>
+        set((state) => ({
+          carrito: [...state.carrito, producto],
+        })),
+      eliminarProducto: (productoId) =>
+        set((state) => ({
+          carrito: state.carrito.filter((producto) => producto.id !== productoId),
+        })),
+      vaciarCarrito: () => set({ carrito: [] }),
+      setCarrito: (productos) => set({ carrito: productos }),
+    }),
+    {
+      name: 'carrito-storage',
+    }
+  )
+);

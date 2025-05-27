@@ -1,6 +1,13 @@
 import React from 'react'
 import { useCarritoStore } from '../store/useCarritoStore'
 
+// Define the ProductoEnCarrito type to match the store's definition
+type ProductoEnCarrito = {
+  id: number // Updated to match the type in useCarritoStore
+  nombre: string
+  precio: number
+}
+
 const CartSidebar = () => {
   const productos = useCarritoStore((state) => state.productos)
   const total = useCarritoStore((state) => state.total)
@@ -14,7 +21,7 @@ const CartSidebar = () => {
       ) : (
         <div>
           <ul>
-            {productos.map((producto) => (
+            {productos.map((producto: ProductoEnCarrito) => (
               <li key={producto.id} className="flex justify-between items-center mt-2">
                 <span>{producto.nombre}</span>
                 <span>${producto.precio}</span>

@@ -3,38 +3,159 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Button } from '@/components/ui/Button'
+import { toast } from 'sonner'
+import { FiUser, FiPhone, FiArrowRight, FiLoader } from 'react-icons/fi'
 
 export default function ClienteRegistradoPage() {
   const [telefono, setTelefono] = useState('')
+  const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-  const buscarCliente = async () => {
-    if (!telefono) return alert('Ingresa tu número')
+  const buscarCliente = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
 
-    // Aquí puedes agregar validación real desde la BD
-    router.push('/menu')
+    if (!telefono) {
+      toast.error('Por favor ingresa tu número de teléfono')
+      setLoading(false)
+      return
+    }
+
+    try {
+      // Validación con la base de datos
+      const response = await fetch('/api/clientes/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ telefono }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // Guardar sesión en localStorage
+        localStorage.setItem('clienteSession', JSON.stringify(data.cliente))
+        
+        toast.success(`¡Bienvenido de vuelta, ${data.cliente.nombre}!`)
+        router.push('/menu')
+      } else {
+        toast.error(data.message || 'Error al iniciar sesión')
+      }
+    } catch (error) {
+      toast.error('Error de conexión con el servidor')
+      console.error('Error:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <section className="max-w-md mx-auto mt-10 p-6 bg-white/5 rounded-xl shadow-md text-white text-center">
-      <motion.h2
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="text-2xl font-bold text-yellow-500 mb-4"
-      >
-        ¡Bienvenido de vuelta!
-      </motion.h2>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-red-900 to-amber-900 flex items-center justify-center p-4">
+      {/* Fondo decorativo */}
+      <div className="absolute inset-0 opacity-20">
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?q=80&w=1981&auto=format&fit=crop')] bg-cover bg-center mix-blend-overlay"></div>
+      </div>
 
-      <input
-        type="tel"
-        placeholder="Tu número de teléfono"
-        className="w-full p-3 rounded-md bg-black/40 border border-white/10 mb-6 text-white placeholder-white/40"
-        value={telefono}
-        onChange={(e) => setTelefono(e.target.value)}
-      />
-      <Button onClick={buscarCliente}>Continuar</Button>
-    </section>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.6 }}
+        className="relative z-10 w-full max-w-md"
+      >
+        <div className="bg-black/70 backdrop-blur-md rounded-xl border border-amber-500/30 shadow-2xl overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-amber-600 to-orange-600 p-6 text-center">
+            <motion.h2
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-3xl font-bold text-white flex items-center justify-center gap-2"
+            >
+              <FiUser className="inline-block" />
+              <span>Bienvenido</span>
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="text-amber-100 mt-2"
+            >
+              Ingresa tu número para continuar
+            </motion.p>
+          </div>
+
+          {/* Formulario */}
+          <form onSubmit={buscarCliente} className="p-6 space-y-6">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.6 }}
+              className="relative"
+            >
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-amber-400">
+                <FiPhone size={20} />
+              </div>
+              <input
+                type="tel"
+                placeholder="Número de teléfono"
+                className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-white placeholder-gray-400"
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
+                pattern="[0-9]{10}"
+                title="Ingresa un número de 10 dígitos"
+                required
+              />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+            >
+              <button
+                type="submit"
+                disabled={loading}
+                className={`w-full flex items-center justify-center gap-2 py-3 px-6 rounded-lg font-bold transition-all ${
+                  loading
+                    ? 'bg-amber-700 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black'
+                }`}
+              >
+                {loading ? (
+                  <>
+                    <FiLoader className="animate-spin" />
+                    <span>Verificando...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Continuar</span>
+                    <FiArrowRight />
+                  </>
+                )}
+              </button>
+            </motion.div>
+          </form>
+
+          {/* Footer */}
+          <div className="px-6 pb-6 text-center">
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1 }}
+              className="text-gray-400 text-sm"
+            >
+              ¿No tienes cuenta?{' '}
+              <a
+                href="/nuevo-cliente"
+                className="text-amber-400 hover:text-amber-300 underline transition-colors"
+              >
+                Regístrate aquí
+              </a>
+            </motion.p>
+          </div>
+        </div>
+      </motion.div>
+    </div>
   )
 }

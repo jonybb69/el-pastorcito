@@ -1,65 +1,60 @@
-import { prisma } from "@/lib/prisma";
+import prisma from '@//lib/prisma';
 import { NextResponse } from "next/server";
 
+// api/pedidos/route.ts
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const { clienteId, productos } = await req.json();
 
-    // Validación general
-    if (!body || !body.clienteId || !body.metodoPago || !Array.isArray(body.productos)) {
-      return new NextResponse("Datos incompletos para crear el pedido", { status: 400 });
+    // 1. Verificar que el cliente existe
+    const cliente = await prisma.cliente.findUnique({
+      where: { id: Number(clienteId) }
+    });
+    if (!cliente) throw new Error('Cliente no existe');
+
+    // 2. Verificar productos
+    const productosIds = productos.map((p: { productoId: any; }) => Number(p.productoId));
+    const productosExistentes = await prisma.producto.count({
+      where: { id: { in: productosIds } }
+    });
+    if (productosExistentes !== productos.length) {
+      throw new Error('Algunos productos no existen');
     }
 
-    const clienteId = Number(body.clienteId);
-    const metodoPago = body.metodoPago;
-    const productos = body.productos;
-
-    if (isNaN(clienteId)) {
-      return new NextResponse("clienteId inválido", { status: 400 });
-    }
-
-    if (!productos.length) {
-      return new NextResponse("No hay productos en el pedido", { status: 400 });
-    }
-
-    for (const item of productos) {
-      if (
-        !item.productoId || isNaN(Number(item.productoId)) ||
-        !item.cantidad || isNaN(Number(item.cantidad)) ||
-        !item.precio || isNaN(Number(item.precio))
-      ) {
-        return new NextResponse("Producto inválido en la lista", { status: 400 });
-      }
-    }
-
-    // Crear el pedido
+    // 3. Crear pedido
     const pedido = await prisma.pedido.create({
       data: {
-        clienteId: clienteId,
-        metodoPago: metodoPago,
+        clienteId: Number(clienteId),
+        estado: 'pendiente',
         creadoEn: new Date(),
-      },
+        metodoPago: 'efectivo', // Ajusta el valor según tu lógica de negocio
+      }
     });
 
-    // Crear los registros en pedidoProducto
-    for (const item of productos) {
-      await prisma.pedidoProducto.create({
-        data: {
-          pedidoId: pedido.id,
-          productoId: Number(item.productoId),
-          cantidad: Number(item.cantidad),
-          precio: Number(item.precio),
-        },
-      });
-    }
+    // 4. Crear relaciones
+    await prisma.pedidoProducto.createMany({
+      data: productos.map((item: { productoId: any; cantidad: any; precio: any; }) => ({
+        pedidoId: pedido.id,
+        productoId: Number(item.productoId),
+        cantidad: Number(item.cantidad),
+        precio: Number(item.precio),
+      }))
+    });
 
-    return NextResponse.json({ mensaje: "Pedido creado con éxito", pedido });
+    return NextResponse.json(pedido);
   } catch (error) {
-    console.error("Error al crear el pedido:", error);
-    return new NextResponse("Error al crear el pedido", { status: 500 });
+    console.error('Error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error al crear pedido';
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 500 }
+    );
   }
 }
 
+  
+
+// Obtener todos los pedidos
 export async function GET() {
   try {
     const pedidos = await prisma.pedido.findMany({
@@ -74,32 +69,27 @@ export async function GET() {
         },
         productos: {
           include: {
-            producto: {
-              select: { nombre: true },
-            },
+            producto: { select: { nombre: true } },
             salsas: {
-              include: {
-                salsa: {
-                  select: { nombre: true },
-                },
-              },
+              include: { salsa: { select: { nombre: true } } },
             },
           },
         },
       },
     });
 
-    const pedidosFormateados = pedidos.map((pedido) => ({
-      pedidoId: pedido.id,
-      numeroPedido: `#${pedido.id.toString().padStart(5, '0')}`,
+    const pedidosFormateados = pedidos.map((pedido: any) => ({
+      id: pedido.id,
+      numeroPedido: `#${pedido.id}`,
       fecha: pedido.creadoEn,
+      estado: pedido.estado,
       cliente: pedido.cliente,
-      productos: pedido.productos.map((pp) => ({
+      productos: pedido.productos.map((pp: any) => ({
         id: pp.productoId,
         nombre: pp.producto.nombre,
         cantidad: pp.cantidad,
         precio: pp.precio,
-        salsas: pp.salsas.map((s) => s.salsa.nombre),
+        salsas: pp.salsas.map((s: any) => s.salsa.nombre),
       })),
     }));
 

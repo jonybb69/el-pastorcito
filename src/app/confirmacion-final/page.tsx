@@ -3,11 +3,20 @@
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
 import { useRouter } from 'next/navigation';
+import { usePedidoStore } from '@/store/usePedidoStore';
 
 export default function ConfirmacionFinal() {
   const router = useRouter();
+  const { limpiarPedido } = usePedidoStore();
 
   const handleNuevoPedido = () => {
+    // Limpia solo los productos del pedido actual, manteniendo la sesión del cliente
+    limpiarPedido();
+    router.push('/menu');
+  };
+
+  const handleVolverInicio = () => {
+    // No limpia la sesión, solo redirige al inicio
     router.push('/');
   };
 
@@ -45,15 +54,15 @@ export default function ConfirmacionFinal() {
         >
           <Button
             onClick={handleNuevoPedido}
-            className="bg-pink-500 hover:bg-pink-600 text-white font-semibold py-2 px-6 rounded-full transition-all duration-300"
+            className="bg-pink-500 hover:bg-pink-600 text-white font-semibold py-3 px-8 rounded-full transition-all duration-300 shadow-lg hover:shadow-pink-500/30"
           >
             Hacer otro pedido
           </Button>
 
           <Button
             variant="outline"
-            onClick={handleNuevoPedido}
-            className="border-pink-500 text-pink-500 hover:bg-pink-50 font-semibold py-2 px-6 rounded-full transition-all duration-300"
+            onClick={handleVolverInicio}
+            className="border-pink-500 text-pink-500 hover:bg-pink-50 font-semibold py-3 px-8 rounded-full transition-all duration-300 shadow-md hover:shadow-pink-500/20"
           >
             Volver al inicio
           </Button>
