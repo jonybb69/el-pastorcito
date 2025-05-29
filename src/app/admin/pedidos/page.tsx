@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { useConfirmDialog } from '@/components/useConfirmDialog'
-import { FiPackage, FiClock, FiCheckCircle, FiTruck, FiX, FiUser, FiPhone, FiMapPin, FiDollarSign, FiMenu, FiChevronLeft, FiChevronUp, FiChevronDown } from 'react-icons/fi'
+import { FiPackage, FiClock, FiCheckCircle, FiTruck, FiX, FiUser, FiPhone, FiMenu, FiChevronLeft, FiChevronUp, FiChevronDown, FiRefreshCw, FiChevronsRight, } from 'react-icons/fi'
 
 type Pedido = {
   id: number
@@ -26,13 +26,19 @@ type Pedido = {
   }>
 }
 
+const estadosPedido = [
+  { value: 'pendiente', label: 'Pendiente', icon: FiClock, color: 'red' },
+  { value: 'en preparación', label: 'En preparación', icon: FiPackage, color: 'blue' },
+  { value: 'en camino', label: 'En camino', icon: FiTruck, color: 'purple' },
+  { value: 'finalizado', label: 'Finalizado', icon: FiCheckCircle, color: 'green' }
+]
+
 export default function AdminPedidosPage() {
   const [pedidos, setPedidos] = useState<Pedido[]>([])
   const [cargando, setCargando] = useState(true)
   const [filtroEstado, setFiltroEstado] = useState<string>('todos')
   const [pedidoExpandido, setPedidoExpandido] = useState<number | null>(null)
   const [panelAbierto, setPanelAbierto] = useState(() => {
-    // Recuperar estado del localStorage o usar true por defecto
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('panelEstado')
       return saved ? JSON.parse(saved) : true
@@ -41,13 +47,13 @@ export default function AdminPedidosPage() {
   })
   const { confirm, Dialog } = useConfirmDialog()
 
-  // Guardar estado del panel en localStorage cuando cambie
   useEffect(() => {
     localStorage.setItem('panelEstado', JSON.stringify(panelAbierto))
   }, [panelAbierto])
 
   const fetchPedidos = async () => {
     try {
+      setCargando(true)
       const res = await fetch('/api/pedidos')
       if (!res.ok) throw new Error('Error al cargar pedidos')
       const data = await res.json()
@@ -75,10 +81,9 @@ export default function AdminPedidosPage() {
     }
 
     const confirmado = await confirm({
-      message: '¿Estás seguro de que deseas eliminar este pedido?',
+      message: '¿Estás seguro de eliminar este pedido? Esta acción no se puede deshacer.',
       confirmText: 'Eliminar',
-      cancelText: 'Cancelar',
-      type: 'danger',
+      cancelText: 'Cancelar'
     })
 
     if (!confirmado) return
@@ -86,29 +91,20 @@ export default function AdminPedidosPage() {
     try {
       const res = await fetch(`/api/pedidos/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error()
-      toast.success('Pedido eliminado')
-
-      setPedidos((prev) => prev.filter((p) => p.id !== id))
+      
+      toast.success('Pedido eliminado correctamente')
+      setPedidos(prev => prev.filter(p => p.id !== id))
+      
+      // Si el pedido eliminado estaba expandido, cerramos el panel
+      if (pedidoExpandido === id) {
+        setPedidoExpandido(null)
+      }
     } catch {
       toast.error('No se pudo eliminar el pedido')
     }
   }
 
   const actualizarEstado = async (id: number, nuevoEstado: string) => {
-    if (!id) {
-      toast.error('ID de pedido no válido')
-      return
-    }
-
-    const confirmado = await confirm({
-      message: `¿Seguro que deseas marcar este pedido como "${nuevoEstado}"?`,
-      confirmText: 'Actualizar',
-      cancelText: 'Cancelar',
-      type: 'info',
-    })
-
-    if (!confirmado) return
-
     try {
       const res = await fetch(`/api/pedidos/${id}`, {
         method: 'PATCH',
@@ -118,9 +114,9 @@ export default function AdminPedidosPage() {
 
       if (!res.ok) throw new Error()
 
-      toast.success(`Estado actualizado a "${nuevoEstado}"`)
-      setPedidos((prev) =>
-        prev.map((pedido) =>
+      toast.success(`Pedido marcado como ${nuevoEstado}`)
+      setPedidos(prev =>
+        prev.map(pedido =>
           pedido.id === id ? { ...pedido, estado: nuevoEstado } : pedido
         )
       )
@@ -139,355 +135,365 @@ export default function AdminPedidosPage() {
 
   const calcularTotal = (productos: { precio: number; cantidad: number }[]) => {
     return productos.reduce(
-      (total: number, producto) => total + producto.precio * producto.cantidad,
+      (total, producto) => total + producto.precio * producto.cantidad,
       0
     ).toFixed(2)
   }
 
+  const getEstadoConfig = (estado: string) => {
+    return estadosPedido.find(e => e.value === estado) || 
+      { value: estado, label: estado, icon: FiPackage, color: 'gray' }
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-8">
-      {/* Botón para toggle del panel */}
-      <button
-        onClick={togglePanel}
-        className={`fixed z-20 top-4 left-4 md:left-6 p-2 rounded-full bg-gray-800 border border-gray-700 shadow-lg text-white hover:bg-gray-700 transition-all ${
-          panelAbierto ? 'md:left-64' : 'md:left-6'
-        }`}
-      >
-        {panelAbierto ? <FiChevronLeft size={24} /> : <FiMenu size={24} />}
-      </button>
+    <div className="relative">
+  {/* Botón flotante para móviles */}
+  <motion.button
+    whileTap={{ scale: 0.95 }}
+    onClick={togglePanel}
+    className={`md:hidden fixed z-30 top-4 left-4 p-3 rounded-full shadow-lg ${
+      panelAbierto ? 'bg-white text-gray-800' : 'bg-amber-500 text-white'
+    } transition-colors duration-200`}
+  >
+    {panelAbierto ? <FiChevronLeft size={20} /> :  <FiChevronsRight size={20} />}
+  </motion.button>
 
-      {/* Panel lateral */}
-      <motion.div
-        initial={{ x: panelAbierto ? 0 : -300 }}
-        animate={{ x: panelAbierto ? 0 : -300 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className={`fixed z-10 left-0 top-0 h-full w-72 bg-gray-800/90 backdrop-blur-md border-r border-gray-700 p-6 shadow-xl ${
-          panelAbierto ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <h3 className="text-xl font-bold text-amber-400 mb-6 flex items-center gap-2">
-          <FiPackage />
-          <span>Filtros</span>
+  {/* Panel lateral */}
+  <motion.div
+    initial={{ x: panelAbierto ? 0 : -320 }}
+    animate={{ x: panelAbierto ? 0 : -320 }}
+    transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+    className={`fixed z-50 rounded-lg left-5 top-5 h-11/12 w-72 bg-cyan-500/60 shadow-lg border border-white/50 flex flex-col ${
+      panelAbierto ? 'translate-x-0' : '-translate-x-full'
+    }`}
+  >
+    {/* Header del panel */}
+    <div className="p-5 border rounded-lg border-black/60 bg-gradient-to-r from-cyan-800/90 to-amber-600/90">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xl font-bold text-black flex items-center gap-2">
+          <FiPackage className="text-amber-600" size={22} />
+          <span>Filtrar Pedidos</span>
         </h3>
-        
-        <div className="space-y-4">
-          <button
-            onClick={() => setFiltroEstado('todos')}
-            className={`w-full text-left px-4 py-2 rounded-lg transition-all ${
-              filtroEstado === 'todos' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-gray-700/50 hover:bg-gray-700'
-            }`}
-          >
-            Todos los pedidos
-          </button>
-          
-          <button
-            onClick={() => setFiltroEstado('pendiente')}
-            className={`w-full text-left px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${
-              filtroEstado === 'pendiente' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-gray-700/50 hover:bg-gray-700'
-            }`}
-          >
-            <FiClock />
-            <span>Pendientes</span>
-          </button>
-          
-          <button
-            onClick={() => setFiltroEstado('en preparación')}
-            className={`w-full text-left px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${
-              filtroEstado === 'en preparación' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-700/50 hover:bg-gray-700'
-            }`}
-          >
-            <FiPackage />
-            <span>En preparación</span>
-          </button>
-          
-          <button
-            onClick={() => setFiltroEstado('finalizado')}
-            className={`w-full text-left px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${
-              filtroEstado === 'finalizado' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-gray-700/50 hover:bg-gray-700'
-            }`}
-          >
-            <FiCheckCircle />
-            <span>Finalizados</span>
-          </button>
-          
-          <button
-            onClick={() => setFiltroEstado('en camino')}
-            className={`w-full text-left px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${
-              filtroEstado === 'en camino' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-gray-700/50 hover:bg-gray-700'
-            }`}
-          >
-            <FiTruck />
-            <span>En camino</span>
-          </button>
-        </div>
+        <button 
+          onClick={togglePanel}
+          className="hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-teal-800 border border-gray-800 text-black hover:text-black hover:bg-teal-700 transition-colors"
+        >
+          <FiChevronLeft size={18} />
+        </button>
+      </div>
+      <p className="text-sm text-teal-500 mt-1">
+        {pedidos.length} pedidos en total
+      </p>
+    </div>
 
-        {/* Estadísticas */}
-        <div className="mt-8 pt-6 border-t border-gray-700">
-          <h4 className="text-lg font-semibold text-gray-300 mb-4">Estadísticas</h4>
-          <div className="space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-400">Total pedidos:</span>
-              <span className="font-medium">{pedidos.length}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-400">Pendientes:</span>
-              <span className="text-red-400">{pedidos.filter(p => p.estado === 'pendiente').length}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-400">En preparación:</span>
-              <span className="text-blue-400">{pedidos.filter(p => p.estado === 'en preparación').length}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-400">Finalizados:</span>
-              <span className="text-green-400">{pedidos.filter(p => p.estado === 'finalizado').length}</span>
-            </div>
-          </div>
-        </div>
-      </motion.div>
+    {/* Contenido del panel */}
+    <div className="flex-1 overflow-y-auto p-5">
+      <div className="space-y-6">
+        {/* Filtro Todos */}
+        <motion.button
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => setFiltroEstado('todos')}
+          className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
+            filtroEstado === 'todos' 
+              ? 'bg-white/10 text-amber-500 border-1 border-white/30 hover: shadow-xl' 
+              : 'bg-white/30 hover:bg-black/20 text-gray-700 border border-gray-100'
+          }`}
+        >
+          <div className={`w-3 h-3 rounded-full ${
+            filtroEstado === 'todos' ? 'bg-amber-500' : 'bg-gray-300'
+          }`}></div>
+          <span className="font-medium">Todos los pedidos</span>
+          <span className="ml-auto px-2 py-1 text-hover- rounded-lg bg-gray-100 text-black text-xs font-medium">
+            {pedidos.length}
+          </span>
+        </motion.button>
+        
+        {/* Filtros por estado */}
+        {estadosPedido.map((estado) => {
+          const count = pedidos.filter(p => p.estado === estado.value).length
+          return (
+            <motion.button
+              key={estado.value}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setFiltroEstado(estado.value)}
+              className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
+                filtroEstado === estado.value 
+                  ? `bg-${estado.color}-50 text-${estado.color}-800 border-2 border-${estado.color}-100 shadow-sm` 
+                  : 'bg-white/40 hover:bg-gray-500 text-gray-700 border border-gray-100'
+              }`}
+            >
+              <estado.icon 
+                className={`text-${estado.color}-500`} 
+                size={18} 
+              />
+              <span className="font-medium">{estado.label}</span>
+              {count > 0 ? (
+                <span className={`ml-auto px-2 py-1 rounded-lg ${
+                  filtroEstado === estado.value 
+                    ? `bg-${estado.color}-100 text-${estado.color}-800` 
+                    : 'bg-gray-100 text-gray-700'
+                } text-xs font-medium`}>
+                  {count}
+                </span>
+              ) : (
+                <span className="ml-auto text-xs text-gray-400">-</span>
+              )}
+            </motion.button>
+          )
+        })}
+      </div>
+    </div>
+
+    {/* Footer del panel */}
+    <div className="p-4 rounded-lg  border-black/70  bg-gradient-to-r from-amber-500/70 to-rose-500/70 mt-auto">
+      <button
+        onClick={fetchPedidos}
+        disabled={cargando}
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white/40 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors font-medium"
+      >
+        {cargando ? (
+          <FiRefreshCw className="animate-spin" size={16} />
+        ) : (
+          <FiRefreshCw size={16} />
+        )}
+        <span>Actualizar lista</span>
+      </button>
+    </div>
+  </motion.div>
+
+  {/* Overlay para móviles */}
+  <AnimatePresence>
+    {panelAbierto && (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={togglePanel}
+        className="fixed inset-0 z-10 bg-black/30 md:hidden"
+      />
+    )}
+  </AnimatePresence>
+
 
       {/* Contenido principal */}
       <div className={`transition-all duration-300 ${
-        panelAbierto ? 'ml-0 md:ml-72' : 'ml-0'
+        panelAbierto ? 'ml-0 md:ml-64' : 'ml-0'
       }`}>
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7 }}
-          className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 mb-8 border border-gray-700"
-        >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-cyan-700 to-emerald-700 rounded-xl shadow-lg p-6 mb-6 border border-gray-900/50">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-                <FiPackage className="text-amber-400" />
-                <span>Pedidos Entrantes</span>
+              <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+                <FiPackage className="text-amber-500" />
+                <span>Administración de Pedidos</span>
               </h1>
-              <p className="text-gray-400 mt-1">
-                Administra y actualiza el estado de los pedidos
+              <p className="text-white mt-1">
+                Gestiona y actualiza el estado de los pedidos
               </p>
             </div>
 
-            {/* Filtros para móvil */}
-            <div className="md:hidden w-full">
+            <div className="flex items-center gap-3">
+              {/* Filtro móvil */}
               <select
                 value={filtroEstado}
                 onChange={(e) => setFiltroEstado(e.target.value)}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
+                className="md:hidden bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm"
               >
                 <option value="todos">Todos los pedidos</option>
-                <option value="pendiente">Pendientes</option>
-                <option value="en preparación">En preparación</option>
-                <option value="finalizado">Finalizados</option>
-                <option value="en camino">En camino</option>
+                {estadosPedido.map(estado => (
+                  <option key={estado.value} value={estado.value}>
+                    {estado.label}
+                  </option>
+                ))}
               </select>
+
+              <button
+                onClick={togglePanel}
+                className="hidden md:flex items-center justify-center w-10 h-10 rounded-lg shadow-lg hover:shadow-black bg-white/90 hover:bg-white text-gray-900"
+              >
+                {panelAbierto ? <FiChevronLeft /> : <FiMenu />}
+              </button>
+
+              <button
+                onClick={fetchPedidos}
+                disabled={cargando}
+                className="flex items-center gap-2 bg-amber-500/90 hover:bg-amber-500 shadow-lg hover:shadow-black text-black px-4 py-2 rounded-lg transition-colors text-sm"
+              >
+                {cargando ? (
+                  <FiRefreshCw className="animate-spin" />
+                ) : (
+                  <FiRefreshCw />
+                )}
+                <span>Actualizar</span>
+              </button>
             </div>
-
-            <button
-              onClick={fetchPedidos}
-              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-black px-4 py-2 rounded-lg transition-colors"
-            >
-              <FiCheckCircle />
-              <span>Actualizar</span>
-            </button>
           </div>
-        </motion.div>
+        </div>
 
+        {/* Contenido */}
         {cargando ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex justify-center items-center h-64"
-          >
+          <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500"></div>
-          </motion.div>
+          </div>
         ) : pedidosFiltrados.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-12 bg-gray-800/50 rounded-xl border border-gray-700"
-          >
-            <FiPackage className="mx-auto text-4xl text-gray-500 mb-4" />
-            <h3 className="text-xl font-medium text-gray-300">
-              No hay pedidos {filtroEstado !== 'todos' ? `en estado "${filtroEstado}"` : ''}
+          <div className="text-center py-16 bg-white rounded-xl shadow-sm border border-gray-200">
+            <FiPackage className="mx-auto text-4xl text-gray-400 mb-4" />
+            <h3 className="text-xl font-medium text-gray-700">
+              No hay pedidos {filtroEstado !== 'todos' ? `en estado "${getEstadoConfig(filtroEstado).label}"` : ''}
             </h3>
             <p className="text-gray-500 mt-2">
               {filtroEstado === 'todos' ? 'Cuando lleguen nuevos pedidos aparecerán aquí.' : 'Prueba con otro filtro.'}
             </p>
-          </motion.div>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {pedidosFiltrados.filter(p => p.id).map((pedido) => (
-              <motion.div
-                key={pedido.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                whileHover={{ scale: 1.01 }}
-                transition={{ duration: 0.3 }}
-                className={`bg-gradient-to-br from-gray-800/70 to-gray-900/70 backdrop-blur-sm rounded-xl border shadow-xl overflow-hidden transition-all ${
-                  pedido.estado === 'pendiente' ? 'border-red-500/30 hover:border-red-500/50' :
-                  pedido.estado === 'en preparación' ? 'border-blue-500/30 hover:border-blue-500/50' :
-                  pedido.estado === 'finalizado' ? 'border-green-500/30 hover:border-green-500/50' :
-                  'border-gray-700 hover:border-amber-500/30'
-                }`}
-              >
-                {/* Header de la tarjeta */}
-                <div 
-                  className="p-5 cursor-pointer"
-                  onClick={() => toggleExpandirPedido(pedido.id)}
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5">
+            {pedidosFiltrados.map((pedido) => {
+              const estadoConfig = getEstadoConfig(pedido.estado)
+              const EstadoIcon = estadoConfig.icon
+              
+              return (
+                <motion.div
+                  key={pedido.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  whileHover={{ scale: 1.01 }}
+                  transition={{ duration: 0.3 }}
+                  className="bg-white/40  rounded-xl shadow-xl hover:shadow-black/70 border border-gray-200/70 overflow-hidden"
                 >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="flex items-center gap-3">
-                        <h3 className="text-xl font-bold text-white">
-                          Pedido {pedido.numeroPedido}
+                  {/* Header del pedido */}
+                  <div 
+                    className={`p-5 cursor-pointer border-b ${
+                      pedidoExpandido === pedido.id ? 'border-gray-200' : 'border-transparent'
+                    }`}
+                    onClick={() => toggleExpandirPedido(pedido.id)}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-${estadoConfig.color}-100 text-${estadoConfig.color}-800`}>
+                            <EstadoIcon className="mr-1" size={12} />
+                            {estadoConfig.label}
+                          </span>
+                          <span className="text-lg font-bold text-gray-700">
+                            {pedido.numeroPedido}
+                          </span>
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-800">
+                          {pedido.cliente.nombre}
                         </h3>
-                        <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
-                          pedido.estado === 'pendiente' ? 'bg-red-500/20 text-red-400' :
-                          pedido.estado === 'en preparación' ? 'bg-blue-500/20 text-blue-400' :
-                          pedido.estado === 'finalizado' ? 'bg-green-500/20 text-green-400' :
-                          'bg-purple-500/20 text-purple-400'
-                        }`}>
-                          {pedido.estado}
-                        </span>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(pedido.fecha).toLocaleString()}
+                        </p>
                       </div>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {new Date(pedido.fecha).toLocaleString()}
-                      </p>
+                      <button className="text-gray-400 hover:text-gray-900">
+                        {pedidoExpandido === pedido.id ? <FiChevronUp /> : <FiChevronDown />}
+                      </button>
                     </div>
-                    <button className="text-gray-400 hover:text-white">
-                      {pedidoExpandido === pedido.id ? <FiChevronUp /> : <FiChevronDown />}
-                    </button>
+
+                    <div className="mt-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FiPhone className="text-teal-400" size={14} />
+                        <span className="text-sm text-gray-600">{pedido.cliente.telefono}</span>
+                      </div>
+                      <div className="text-sm font-medium text-gray-900">
+                        ${calcularTotal(pedido.productos)}
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="mt-4 flex items-center gap-3">
-                    <div className="bg-amber-500/10 p-2 rounded-lg text-amber-400">
-                      <FiUser size={18} />
-                    </div>
-                    <div>
-                      <p className="font-medium">{pedido.cliente.nombre}</p>
-                      <p className="text-sm text-gray-400">{pedido.cliente.telefono}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Contenido expandible */}
-                <AnimatePresence>
-                  {pedidoExpandido === pedido.id && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="px-5 pb-5 space-y-4">
-                        {/* Información del cliente */}
-                        <div className="bg-gray-800/50 p-4 rounded-lg">
-                          <h4 className="font-medium text-gray-300 mb-3 flex items-center gap-2">
-                            <FiUser className="text-amber-400" />
-                            <span>Información del cliente</span>
-                          </h4>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex items-center gap-3">
-                              <FiPhone className="text-gray-500" />
-                              <span>{pedido.cliente.telefono}</span>
-                            </div>
-                            <div className="flex items-start gap-3">
-                              <FiMapPin className="text-gray-500 mt-0.5" />
-                              <span>{pedido.cliente.direccion}</span>
+                  {/* Contenido expandible */}
+                  <AnimatePresence>
+                    {pedidoExpandido === pedido.id && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="p-5 space-y-7">
+                          {/* Detalles del cliente */}
+                          <div className="space-y-2">
+                            <h4 className="text-sm font-medium text-cyan-600 flex items-center gap-2">
+                              <FiUser className="text-amber-500" />
+                              Información del cliente
+                            </h4>
+                            <div className="pl-6 space-y-1 text-sm">
+                              <p className="text-gray-600">{pedido.cliente.nombre}</p>
+                              <p className="text-gray-600">{pedido.cliente.telefono}</p>
+                              <p className="text-gray-600">{pedido.cliente.direccion}</p>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Productos */}
-                        <div>
-                          <h4 className="font-medium text-gray-300 mb-3 flex items-center gap-2">
-                            <FiPackage className="text-amber-400" />
-                            <span>Productos ({pedido.productos.length})</span>
-                          </h4>
+                          {/* Productos */}
                           <div className="space-y-3">
-                            {pedido.productos.map((prod, index) => (
-                              <motion.div
-                                key={`${prod.id}-${index}`}
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: index * 0.05 }}
-                                className="p-3 rounded-lg bg-gray-800/30 border border-gray-700"
-                              >
-                                <div className="flex justify-between items-start">
+                            <h4 className="text-sm font-medium text-cyan-600 flex items-center gap-2">
+                              <FiPackage className="text-amber-500" />
+                              Productos ({pedido.productos.length})
+                            </h4>
+                            <div className="space-y-2">
+                              {pedido.productos.map((producto, index) => (
+                                <div key={index} className="flex justify-between items-start pl-6">
                                   <div>
-                                    <p className="font-medium">{prod.nombre}</p>
-                                    {prod.salsas.length > 0 && (
-                                      <p className="text-xs text-gray-400 mt-1">
-                                        Salsas: {prod.salsas.join(', ')}
+                                    <p className="text-sm font-medium text-white">
+                                      {producto.nombre} × {producto.cantidad}
+                                    </p>
+                                    {producto.salsas.length > 0 && (
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        Salsas: {producto.salsas.join(', ')}
                                       </p>
                                     )}
                                   </div>
-                                  <div className="text-right">
-                                    <p className="font-medium">${prod.precio.toFixed(2)}</p>
-                                    <p className="text-xs text-gray-400">x{prod.cantidad}</p>
-                                  </div>
+                                  <p className="text-sm font-medium text-black">
+                                    ${(producto.precio * producto.cantidad).toFixed(2)}
+                                  </p>
                                 </div>
-                              </motion.div>
-                            ))}
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Acciones */}
+                          <div className="pt-">
+                            <div className="flex flex-wrap gap-2">
+                              {estadosPedido
+                                .filter(e => e.value !== pedido.estado)
+                                .map((estado) => {
+                                  const Icon = estado.icon
+                                  return (
+                                    <button
+                                      key={estado.value}
+                                      onClick={() => actualizarEstado(pedido.id, estado.value)}
+                                      className={`flex items-center shadow-lg hover:shadow-black/70 gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                                        estado.color === 'rose' ? 'bg-white/80 text-rose-500 hover:bg-white' :
+                                        estado.color === 'cyan' ? 'bg-white/80 text-cyan-600 hover:bg-white' :
+                                        estado.color === 'purple' ? 'bg-white/80 text-purple-700 hover:bg-white' :
+                                        'bg-white/80 text-teal-700 hover:bg-white'
+                                      }`}
+                                    >
+                                      <Icon size={14} />
+                                      <span>{estado.label}</span>
+                                    </button>
+                                  )
+                                })}
+
+                              <button
+                                onClick={() => eliminarPedido(pedido.id)}
+                                className="flex items-center gap-2 px-3 py-1.5 shadow-lg hover:shadow-black/70 rounded-lg text-xs font-medium bg-white/80 text-rose-500 hover:bg-white"
+                              >
+                                <FiX size={14} />
+                                <span>Eliminar</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
-
-                        {/* Total y acciones */}
-                        <div className="flex flex-col md:flex-row justify-between gap-4 pt-2">
-                          <div className="bg-gray-800/50 p-3 rounded-lg flex items-center gap-2">
-                            <FiDollarSign className="text-green-400" />
-                            <span className="font-bold">Total:</span>
-                            <span className="text-lg font-bold text-green-400">
-                              ${calcularTotal(pedido.productos)}
-                            </span>
-                          </div>
-
-                          <div className="flex flex-wrap gap-2">
-                            {pedido.estado !== 'en preparación' && (
-                              <button
-                                onClick={() => actualizarEstado(pedido.id, 'en preparación')}
-                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-sm"
-                              >
-                                <FiPackage size={16} />
-                                <span>En preparación</span>
-                              </button>
-                            )}
-
-                            {pedido.estado !== 'finalizado' && (
-                              <button
-                                onClick={() => actualizarEstado(pedido.id, 'finalizado')}
-                                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-sm"
-                              >
-                                <FiCheckCircle size={16} />
-                                <span>Finalizar</span>
-                              </button>
-                            )}
-
-                            {pedido.estado !== 'en camino' && (
-                              <button
-                                onClick={() => actualizarEstado(pedido.id, 'en camino')}
-                                className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors text-sm"
-                              >
-                                <FiTruck size={16} />
-                                <span>Enviar</span>
-                              </button>
-                            )}
-
-                            <button
-                              onClick={() => eliminarPedido(pedido.id)}
-                              className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors text-sm"
-                            >
-                              <FiX size={16} />
-                              <span>Eliminar</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              )
+            })}
           </div>
         )}
       </div>
