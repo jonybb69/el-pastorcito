@@ -6,6 +6,8 @@ export async function POST(req: Request) {
   try {
     const { clienteId, productos } = await req.json();
 
+    type ProductoInput = { productoId: number; cantidad: number; precio: number };
+
     // 1. Verificar que el cliente existe
     const cliente = await prisma.cliente.findUnique({
       where: { id: Number(clienteId) }
@@ -13,7 +15,7 @@ export async function POST(req: Request) {
     if (!cliente) throw new Error('Cliente no existe');
 
     // 2. Verificar productos
-    const productosIds = productos.map((p: { productoId: any; }) => Number(p.productoId));
+    const productosIds = (productos as ProductoInput[]).map((p) => Number(p.productoId));
     const productosExistentes = await prisma.producto.count({
       where: { id: { in: productosIds } }
     });
@@ -27,13 +29,13 @@ export async function POST(req: Request) {
         clienteId: Number(clienteId),
         estado: 'pendiente',
         creadoEn: new Date(),
-        metodoPago: 'efectivo', // Ajusta el valor según tu lógica de negocio
+        metodoPago: '', // Ajusta el valor según tu lógica de negocio
       }
     });
 
     // 4. Crear relaciones
     await prisma.pedidoProducto.createMany({
-      data: productos.map((item: { productoId: any; cantidad: any; precio: any; }) => ({
+      data: (productos as ProductoInput[]).map((item: ProductoInput) => ({
         pedidoId: pedido.id,
         productoId: Number(item.productoId),
         cantidad: Number(item.cantidad),
@@ -78,18 +80,38 @@ export async function GET() {
       },
     });
 
-    const pedidosFormateados = pedidos.map((pedido: any) => ({
+    interface PedidoProducto {
+      productoId: number;
+      cantidad: number;
+      precio: number;
+      producto: { nombre: string };
+      salsas: { salsa: { nombre: string } }[];
+    }
+
+    interface Pedido {
+      id: number;
+      creadoEn: Date;
+      estado: string;
+      cliente: {
+        nombre: string;
+        telefono: string;
+        direccion: string;
+      };
+      productos: PedidoProducto[];
+    }
+
+    const pedidosFormateados = pedidos.map((pedido: Pedido) => ({
       id: pedido.id,
       numeroPedido: `#${pedido.id}`,
       fecha: pedido.creadoEn,
       estado: pedido.estado,
       cliente: pedido.cliente,
-      productos: pedido.productos.map((pp: any) => ({
+      productos: pedido.productos.map((pp: PedidoProducto) => ({
         id: pp.productoId,
         nombre: pp.producto.nombre,
         cantidad: pp.cantidad,
         precio: pp.precio,
-        salsas: pp.salsas.map((s: any) => s.salsa.nombre),
+        salsas: pp.salsas.map((s) => s.salsa.nombre),
       })),
     }));
 

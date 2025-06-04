@@ -19,11 +19,11 @@
         "name": "next"
       }
     ],
-    "baseUrl": ".",
+    "baseUrl": "./",
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/**/*:tsx", "**/*.tsx", ".next/types/**/*.ts", "tailwind.config.js"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/**/*:tsx", "**/*.tsx", ".next/types/**/*.ts", "tailwind.config.js", "pegar-código/2"],
   "exclude": ["node_modules"]
 }

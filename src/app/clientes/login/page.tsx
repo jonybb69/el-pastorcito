@@ -5,24 +5,25 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { FiUser, FiPhone, FiArrowRight, FiLoader } from 'react-icons/fi'
+import { useClientStore } from '@/store/useClientStore'
 
 export default function ClienteRegistradoPage() {
   const [telefono, setTelefono] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const { setCliente } = useClientStore()
 
   const buscarCliente = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
-    if (!telefono) {
-      toast.error('Por favor ingresa tu número de teléfono')
+    if (!telefono || telefono.length !== 10) {
+      toast.error('Por favor ingresa un número de teléfono válido (10 dígitos)')
       setLoading(false)
       return
     }
 
     try {
-      // Validación con la base de datos
       const response = await fetch('/api/clientes/login', {
         method: 'POST',
         headers: {
@@ -34,13 +35,23 @@ export default function ClienteRegistradoPage() {
       const data = await response.json()
 
       if (response.ok) {
-        // Guardar sesión en localStorage
-        localStorage.setItem('clienteSession', JSON.stringify(data.cliente))
-        
-        toast.success(`¡Bienvenido de vuelta, ${data.cliente.nombre}!`)
+        // Asegúrate que 'direccion' venga en el objeto cliente
+        const cliente = {
+          id: data.cliente.id,
+          nombre: data.cliente.nombre,
+          telefono: data.cliente.telefono,
+          direccion: data.cliente.direccion, // ✅ incluye dirección
+        }
+
+        // Guardar en Zustand y localStorage
+        setCliente(cliente)
+        localStorage.setItem('clienteSession', JSON.stringify(cliente))
+
+        toast.success(`¡Bienvenido de vuelta, ${cliente.nombre}!`)
         router.push('/menu')
       } else {
-        toast.error(data.message || 'Error al iniciar sesión')
+        toast.error(data.message || 'Cliente no encontrado')
+        router.push(`/nuevo-cliente?telefono=${telefono}`)
       }
     } catch (error) {
       toast.error('Error de conexión con el servidor')
@@ -98,12 +109,13 @@ export default function ClienteRegistradoPage() {
               </div>
               <input
                 type="tel"
-                placeholder="Número de teléfono"
+                placeholder="Número de teléfono (10 dígitos)"
                 className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-white placeholder-gray-400"
                 value={telefono}
-                onChange={(e) => setTelefono(e.target.value)}
-                pattern="[0-9]{10}"
-                title="Ingresa un número de 10 dígitos"
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 10)
+                  setTelefono(value)
+                }}
                 required
               />
             </motion.div>

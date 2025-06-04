@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/Button';
 import Image from 'next/image';
 import { toast } from 'sonner';
 import { usePedidoStore } from '@/store/usePedidoStore';
-import { FiMenu, FiX, FiMapPin, FiInfo, FiMail, FiShoppingCart, FiChevronDown, FiChevronUp, FiCheck } from 'react-icons/fi';
+import { FiMenu, FiX, FiMapPin, FiInfo, FiMail, FiShoppingCart, FiChevronDown, FiChevronUp, FiCheck, FiUser } from 'react-icons/fi';
+import { useClientStore } from '@/store/useClientStore';
+import ClientInfoCard from '@/components/ClientInfoCard';
 
 type Producto = {
   id: number;
@@ -17,6 +19,7 @@ type Producto = {
   categoria: 'platillos' | 'bebidas';
   descripcion?: string;
   tiempoPreparacion?: string;
+  destacado?: boolean;
 };
 
 type Salsa = {
@@ -26,6 +29,7 @@ type Salsa = {
 };
 
 export default function MenuPage() {
+  const cliente = useClientStore();
   const {
     productos: productosSeleccionados,
     addProducto,
@@ -39,6 +43,12 @@ export default function MenuPage() {
   const [categoriaActiva, setCategoriaActiva] = useState<'platillos' | 'bebidas'>('platillos');
   const [productoExpandido, setProductoExpandido] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!cliente) {
+      router.push('/clientes/login')
+    }
+  }, [cliente, router])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -67,7 +77,15 @@ export default function MenuPage() {
     fetchData();
   }, []);
 
-  const toggleProducto = (producto: Producto) => {
+  if (!cliente) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <p>Cargando...</p>
+      </div>
+    )
+  }
+
+  function toggleProducto(producto: Producto) {
     const existe = productosSeleccionados.find((item) => item.id === String(producto.id));
     if (existe) {
       const index = productosSeleccionados.findIndex((item) => item.id === String(producto.id));
@@ -89,7 +107,7 @@ export default function MenuPage() {
       addProducto(nuevoProducto);
       setProductoExpandido(producto.id);
     }
-  };
+  }
 
   const toggleSalsa = (productoId: number, salsa: string) => {
     const index = productosSeleccionados.findIndex((item) => item.id === String(productoId));
@@ -155,9 +173,9 @@ export default function MenuPage() {
             <FiX size={20} />
           </button>
           
-          <nav className="flex-1 space-y-4">
-            <div className="mb-6">
-              <h3 className="text-xs uppercase tracking-wider text-gray-800 mb-3 px-4">Menú</h3>
+          <nav className="flex-1 space-y-2">
+            <div className="mb-4">
+              <h3 className="text-xs uppercase tracking-wider text-gray-800 mb-6 px-4">Menú</h3>
               <motion.button
                 whileHover={{ x: 5 }}
                 whileTap={{ scale: 0.98 }}
@@ -165,7 +183,7 @@ export default function MenuPage() {
                   setCategoriaActiva('platillos');
                   setMenuAbierto(false);
                 }}
-                className={`flex items-center justify-between w-full text-left px-4 py-3 rounded-lg transition ${categoriaActiva === 'platillos' ? 'bg-amber-500 text-black font-medium' : 'hover:bg-gray-800 text-gray-300'}`}
+                className={`flex items-center justify-between w-full text-left mb-3 px-4 py-3 rounded-lg transition ${categoriaActiva === 'platillos' ? 'bg-teal-600/70 shadow-lg hover:shadow-black text-black font-medium' : 'hover:bg-cyan-700/70 text-gray-300'}`}
               >
                 <div className="flex items-center gap-3">
                   <span className="text-xl">🌮</span>
@@ -181,7 +199,7 @@ export default function MenuPage() {
                   setCategoriaActiva('bebidas');
                   setMenuAbierto(false);
                 }}
-                className={`flex items-center justify-between w-full text-left px-4 py-3 rounded-lg transition ${categoriaActiva === 'bebidas' ? 'bg-amber-500 text-black font-medium' : 'hover:bg-gray-800 text-gray-300'}`}
+                className={`flex items-center justify-between w-full text-left px-4 py-3 rounded-lg transition ${categoriaActiva === 'bebidas' ? 'bg-teal-700 text-black font-medium' : 'hover:bg-cyan-700 text-gray-300'}`}
               >
                 <div className="flex items-center gap-3">
                   <span className="text-xl">🍹</span>
@@ -235,9 +253,19 @@ export default function MenuPage() {
       </motion.div>
 
       {/* Contenido principal */}
-      <div className={`relative z-10 min-h-screen transition-all duration-300 ${
+      <div className={`relative z-10 min-h-full transition-all duration-300 ${
         menuAbierto ? 'ml-0 md:ml-72' : 'ml-0'
       }`}>
+
+        <ClientInfoCard cliente={cliente} router={router} />
+        {/* Icono y Etiqueta */}
+        <div className='flex items text-transparent'>
+          <FiUser className="" size={0} />
+        {cliente.cliente?.nombre || 'No registrado'}
+        {cliente.cliente?.telefono || 'No registrado'}
+        {cliente.cliente?.direccion || 'No registrado'}
+        </div>
+      </div>
 
         {/* Botón de categorías para móvil */}
         <div className="fixed top-4 right-4 z-40 md:hidden">
@@ -320,6 +348,7 @@ export default function MenuPage() {
                           </button>
                         </div>
                       </div>
+                      
 
                       <div className="p-3 flex-1 flex flex-col">
                         <div className="flex justify-between items-start mb-1">
@@ -417,6 +446,5 @@ export default function MenuPage() {
           </motion.div>
         )}
       </div>
-    </div>
   );
 }

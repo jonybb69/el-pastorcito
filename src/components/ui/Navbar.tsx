@@ -70,7 +70,7 @@ export default function Navbar() {
                     className={`px-3 py-2 text-white shadow-xl hover:shadow-black rounded-lg font-normal transition-all ${
                       pathname === '/admin/nueva-mesa'
                         ? 'bg-yellow-500 text-black shadow-md'
-                        : 'bg-cyan-900/90 hover:bg-cyan-800/90'
+                        : 'bg-cyan-700 hover:bg-cyan-600'
                     }`}
                   >
                     Nueva Mesa
@@ -80,7 +80,7 @@ export default function Navbar() {
                     className={`px-3 py-2 text-white shadow-xl hover:shadow-black rounded-lg font-normal transition-all ${
                       pathname === '/admin/reparto'
                         ? 'bg-amber-500 text-black shadow-md'
-                        : 'bg-cyan-900/90 hover:bg-cyan-800/90'
+                        : 'bg-cyan-700 hover:bg-cyan-600'
                     }`}
                   >
                     Reparto
@@ -92,7 +92,7 @@ export default function Navbar() {
                   className={`px-3 py-2 text-white rounded-lg shadow-xl hover:shadow-black font-normal transition-all ${
                     pathname === '/admin'
                       ? 'bg-amber-500 text-black shadow-md'
-                      : 'bg-cyan-900/90 hover:bg-cyan-800'
+                      : 'bg-cyan-700 hover:bg-cyan-600'
                   }`}
                 >
                   Admin

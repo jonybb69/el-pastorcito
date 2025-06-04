@@ -135,7 +135,7 @@ export default function AdminDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
+      <div className="min-h-screen rounded-lg bg-gradient-to-br from-gray-900/10 to-gray-800/10">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
@@ -146,7 +146,7 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="pb-16">
+    <div className="min-h-screen rounded-lg bg-teal-900/20 text-white p-6 relative">
       {/* Header */}
       <motion.header
         initial={{ opacity: 0, y: -50 }}

@@ -1,44 +1,42 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePedidoStore } from '@/store/usePedidoStore'
+import { useClientStore } from '@/store/useClientStore'
+import type { Cliente } from '@/store/usePedidoStore'
+
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { FiUser, FiPhone, FiMapPin, FiArrowRight, FiLoader, FiCheck, FiX } from 'react-icons/fi'
 
-interface Cliente {
-  id: string
-  nombre: string
-  telefono: string
-  direccion: string
-}
-
 export default function NuevoClientePage() {
-  const [nombre, setNombre] = useState('')
-  const [telefono, setTelefono] = useState('')
-  const [direccion, setDireccion] = useState('')
+  const [formData, setFormData] = useState({
+    nombre: '',
+    telefono: '',
+    direccion: ''
+  })
   const [sugerencias, setSugerencias] = useState<Cliente[]>([])
   const [cargando, setCargando] = useState(false)
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false)
 
-  const router = useRouter()
-  const setCliente = usePedidoStore(state => state.setCliente)
-  const setMetodoPago = usePedidoStore(state => state.setMetodoPago)
+  const nombreRef = useRef<HTMLInputElement>(null)
+  const telefonoRef = useRef<HTMLInputElement>(null)
+  const direccionRef = useRef<HTMLTextAreaElement>(null)
 
+  const router = useRouter()
+  const setCliente = usePedidoStore((state) => state.setCliente)
+  const setMetodoPago = usePedidoStore((state) => state.setMetodoPago)
+  const setClientStore = useClientStore((state) => state.setCliente)
+  // Buscar clientes existentes
   useEffect(() => {
     const buscarClientes = async () => {
-      if (telefono.length >= 4) {
+      if (formData.telefono.length >= 4) {
         try {
-          const res = await fetch(`/api/clientes?telefono=${telefono}`)
+          const res = await fetch(`/api/clientes?telefono=${formData.telefono}`)
           const { clientes } = await res.json()
-          if (clientes && clientes.length > 0) {
-            setSugerencias(clientes)
-            setMostrarSugerencias(true)
-          } else {
-            setSugerencias([])
-            setMostrarSugerencias(false)
-          }
+          setSugerencias(clientes || [])
+          setMostrarSugerencias(!!clientes?.length)
         } catch (error) {
           console.error('Error buscando clientes:', error)
           setSugerencias([])
@@ -52,36 +50,50 @@ export default function NuevoClientePage() {
 
     const delayDebounce = setTimeout(buscarClientes, 400)
     return () => clearTimeout(delayDebounce)
-  }, [telefono])
+  }, [formData.telefono])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent, nextField?: 'telefono' | 'direccion' | 'submit') => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (nextField === 'telefono') telefonoRef.current?.focus()
+      if (nextField === 'direccion') direccionRef.current?.focus()
+      if (nextField === 'submit') manejarRegistro(e as unknown as React.FormEvent<HTMLFormElement>)
+    }
+  }
 
   const seleccionarCliente = (cliente: Cliente) => {
-    setNombre(cliente.nombre)
-    setTelefono(cliente.telefono)
-    setDireccion(cliente.direccion)
-    setCliente({ ...cliente, id: Number(cliente.id) })
+    setFormData({
+      nombre: cliente.nombre,
+      telefono: cliente.telefono,
+      direccion: cliente.direccion
+    })
+    
+    const clienteData = { ...cliente, id: cliente.id }
+    setCliente(clienteData)
     setMetodoPago('')
     setMostrarSugerencias(false)
     
-    toast.success(
-      <div className="flex items-center gap-2">
-        <FiCheck className="text-green-400" />
-        <span>Cliente encontrado, redirigiendo...</span>
-      </div>
-    )
+    toast.success('Cliente encontrado, redirigiendo...', {
+      icon: <FiCheck className="text-green-400" />,
+      position: 'top-center'
+    })
     
-    setTimeout(() => router.push('/menu'), 1000)
+    setTimeout(() => router.push('/menu'), 800)
   }
 
   const manejarRegistro = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!nombre || !telefono || !direccion) {
-      toast.warning(
-        <div className="flex items-center gap-2">
-          <FiX className="text-yellow-400" />
-          <span>Todos los campos son obligatorios</span>
-        </div>
-      )
+    if (!formData.nombre || !formData.telefono || !formData.direccion) {
+      toast.warning('Todos los campos son obligatorios', {
+        icon: <FiX className="text-yellow-400" />,
+        position: 'top-center'
+      })
       return
     }
 
@@ -91,37 +103,29 @@ export default function NuevoClientePage() {
       const respuesta = await fetch('/api/clientes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre, telefono, direccion }),
+        body: JSON.stringify(formData)
       })
 
-      if (!respuesta.ok) {
-        const errorData = await respuesta.json()
-        throw new Error(errorData.message || 'No se pudo registrar el cliente')
-      }
+      if (!respuesta.ok) throw new Error('No se pudo registrar el cliente')
 
       const cliente = await respuesta.json()
-      setCliente(cliente)
+      const clienteData = { ...cliente, id: cliente.id }
+      
+      setCliente(clienteData)
+      setClientStore(clienteData)
       setMetodoPago('')
       
-      toast.success(
-        <div className="flex items-center gap-2">
-          <FiCheck className="text-green-400" />
-          <span>¡Cliente registrado con éxito!</span>
-        </div>
-      )
+      toast.success('¡Cliente registrado con éxito!', {
+        icon: <FiCheck className="text-green-400" />,
+        position: 'top-center'
+      })
 
-      setTimeout(() => router.push('/menu'), 1000)
-    } catch (error: unknown) {
-      let errorMessage = 'Error al registrar el cliente'
-      if (error instanceof Error) {
-        errorMessage = error.message
-      }
-      toast.error(
-        <div className="flex items-center gap-2">
-          <FiX className="text-red-400" />
-          <span>{errorMessage}</span>
-        </div>
-      )
+      setTimeout(() => router.push('/menu'), 800)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error al registrar el cliente', {
+        icon: <FiX className="text-red-400" />,
+        position: 'top-center'
+      })
     } finally {
       setCargando(false)
     }
@@ -129,7 +133,6 @@ export default function NuevoClientePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-red-900 to-amber-900 flex items-center justify-center p-4">
-      {/* Fondo decorativo */}
       <div className="absolute inset-0 opacity-20">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=2069&auto=format&fit=crop')] bg-cover bg-center mix-blend-overlay"></div>
       </div>
@@ -141,7 +144,6 @@ export default function NuevoClientePage() {
         className="relative z-10 w-full max-w-md"
       >
         <div className="bg-black/70 backdrop-blur-md rounded-xl border border-amber-500/30 shadow-2xl overflow-hidden">
-          {/* Header */}
           <div className="bg-gradient-to-r from-amber-600 to-orange-600 p-6 text-center">
             <motion.h1
               initial={{ opacity: 0, y: -10 }}
@@ -162,7 +164,6 @@ export default function NuevoClientePage() {
             </motion.p>
           </div>
 
-          {/* Formulario */}
           <form onSubmit={manejarRegistro} className="p-6 space-y-6">
             {/* Campo Nombre */}
             <motion.div
@@ -177,11 +178,15 @@ export default function NuevoClientePage() {
                   <FiUser size={18} />
                 </div>
                 <input
+                  ref={nombreRef}
                   type="text"
-                  value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
+                  name="nombre"
+                  value={formData.nombre}
+                  onChange={handleInputChange}
+                  onKeyDown={(e) => handleKeyDown(e, 'telefono')}
                   className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-white placeholder-gray-400"
                   placeholder="Ej: Juan Pérez"
+                  autoComplete="name"
                 />
               </div>
             </motion.div>
@@ -199,24 +204,20 @@ export default function NuevoClientePage() {
                   <FiPhone size={18} />
                 </div>
                 <input
+                  ref={telefonoRef}
                   type="tel"
-                  value={telefono}
-                  onChange={(e) => {
-                    setTelefono(e.target.value)
-                    if (e.target.value.length >= 4) {
-                      setMostrarSugerencias(true)
-                    } else {
-                      setMostrarSugerencias(false)
-                    }
-                  }}
+                  name="telefono"
+                  value={formData.telefono}
+                  onChange={handleInputChange}
+                  onKeyDown={(e) => handleKeyDown(e, 'direccion')}
                   className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-white placeholder-gray-400"
                   placeholder="Ej: 5512345678"
                   pattern="[0-9]{10}"
                   title="Ingresa un número de 10 dígitos"
+                  autoComplete="tel"
                 />
               </div>
 
-              {/* Sugerencias de clientes existentes */}
               <AnimatePresence>
                 {mostrarSugerencias && sugerencias.length > 0 && (
                   <motion.ul
@@ -257,15 +258,18 @@ export default function NuevoClientePage() {
                   <FiMapPin size={18} />
                 </div>
                 <textarea
-                  value={direccion}
-                  onChange={(e) => setDireccion(e.target.value)}
+                  ref={direccionRef}
+                  name="direccion"
+                  value={formData.direccion}
+                  onChange={handleInputChange}
+                  onKeyDown={(e) => handleKeyDown(e, 'submit')}
                   className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-white placeholder-gray-400 min-h-[100px]"
                   placeholder="Ej: Calle Principal #123, Colonia Centro"
+                  autoComplete="street-address"
                 />
               </div>
             </motion.div>
 
-            {/* Botón de Registro */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -295,7 +299,6 @@ export default function NuevoClientePage() {
             </motion.div>
           </form>
 
-          {/* Footer */}
           <div className="px-6 pb-6 text-center">
             <motion.p
               initial={{ opacity: 0 }}

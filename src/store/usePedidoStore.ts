@@ -13,7 +13,7 @@ type ProductoSeleccionado = {
 };
 
 // Tipo de cliente
-type Cliente = {
+export type Cliente = {
   id: number;
   nombre: string;
   telefono: string;
