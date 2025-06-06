@@ -9,7 +9,10 @@ import {
   FiUser, FiPhone, FiChevronLeft, FiChevronUp, 
   FiChevronDown, FiRefreshCw, FiChevronsRight, 
   FiCalendar, FiPlus, FiDownload, FiTrash2, 
-  FiMapPin, FiInfo} from 'react-icons/fi'
+  FiMapPin, FiInfo, FiAlertTriangle
+} from 'react-icons/fi'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { count } from 'console'
 
 type Producto = {
   id: number
@@ -38,6 +41,7 @@ type Pedido = {
   prioridad?: 'normal' | 'alta' | 'urgente'
 }
 
+// Lista de estados posibles para un pedido con sus propiedades visuales y descripciones
 const estadosPedido = [
   { 
     value: 'pendiente', 
@@ -83,6 +87,8 @@ export default function AdminPedidosPage() {
   const [filtroEstado, setFiltroEstado] = useState<string>('todos')
   const [pedidoExpandido, setPedidoExpandido] = useState<number | null>(null)
   const [mostrarContenido, setMostrarContenido] = useState(false)
+  
+  // Recupera el estado del panel (abierto/cerrado) desde localStorage al cargar la página
   const [panelAbierto, setPanelAbierto] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('panelPedidosEstado')
@@ -90,44 +96,26 @@ export default function AdminPedidosPage() {
     }
     return true
   })
+
+  // Hook personalizado para mostrar cuadros de diálogo de confirmación
   const { confirm, Dialog } = useConfirmDialog()
 
+  // Guarda el estado del panel en localStorage cada vez que cambia
   useEffect(() => {
     localStorage.setItem('panelPedidosEstado', JSON.stringify(panelAbierto))
   }, [panelAbierto])
 
+  // Función para cargar los pedidos desde la API
   const fetchPedidos = useCallback(async () => {
-  setCargando(true);
-  try {
-    const response = await fetch("/api/pedidos", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error("Error al obtener los pedidos");
-    }
-
-    const data = await response.json();
-    console.log("📦 Data recibida:", data);
-
-    // Asegúrate de que esto sea un array
-    setPedidos(Array.isArray(data) ? data : data.pedidos);
-  } catch (error) {
-    console.error("Error al obtener los pedidos:", error);
-  } finally {
-    setCargando(false);
-    setMostrarContenido(true);
-  }
-},
-[]);
+    try {
+      setCargando(true)
 
 
-      
-      // Datos de ejemplo si la API falla (solo para desarrollo)
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // Intenta obtener los pedidos desde la API
+      const response = await fetch("/api/pedidos")
+      const data = await response.json()
+
+      // Datos de demostración que se usan si no hay datos en la API (modo desarrollo)
       const demoData: Pedido[] = [
         {
           id: 1,
@@ -182,8 +170,64 @@ export default function AdminPedidosPage() {
           ]
         }
       ]
-      
+
+      // Si la API devuelve pedidos, usarlos; si no, usar los de demostración
+      setPedidos(data.length > 0 ? data : demoData)
+      setMostrarContenido(true)
+
+    
+    } catch (error) {
+      console.log( error, 'error al cargar los pedidos') 
+      // En caso de error al cargar los datos, mostrar notificación de error
+      toast.error('Error al cargar los pedidos', {
+        description: 'Se mostrarán datos de demostración',
+        icon: <FiAlertTriangle className="text-yellow-500" />
+      })
+
+      // Usar datos de demostración si la API falla
+      fetchDemoData()
+    } finally {
+      setCargando(false)
+    }
+  }, [])
+
+  // Función auxiliar para cargar los datos de demostración directamente
  
+  // Aquí irían más funciones como renderización y lógica de interacción
+
+
+
+  const fetchDemoData = () => {
+    // Datos de demostración
+    const demoData: Pedido[] = [
+      {
+        id: 1,
+        pedidoId: 1,
+        numeroPedido: '0001',
+        fecha: new Date().toISOString(),
+        estado: 'pendiente',
+        prioridad: 'alta',
+        cliente: {
+          nombre: 'Juan Pérez',
+          telefono: '555-1234',
+          direccion: 'Calle Falsa 123',
+          notas: 'Entregar en puerta trasera'
+        },
+        productos: [
+          { 
+            id: 1, 
+            nombre: 'Pizza Margarita', 
+            salsas: ['Tomate', 'Picante'], 
+            cantidad: 2, 
+            precio: 30,
+            notas: 'Sin cebolla'
+          }
+        ]
+      }
+    ]
+    setPedidos(demoData)
+    setMostrarContenido(true)
+  }
 
   useEffect(() => {
     fetchPedidos()
@@ -299,14 +343,14 @@ export default function AdminPedidosPage() {
   }
 
   return (
-    <div className="relative rounded-lg min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Botón flotante para móviles */}
       <motion.button
         whileTap={{ scale: 0.95 }}
         onClick={togglePanel}
-        className={`fixed z-50 top-20 left-7 p-3 rounded-full shadow-lg hover:shadow-black ${
-          panelAbierto ? 'bg-white text-gray-800' : 'bg-orange-400 hover:bg-teal-600 text-black'
-        } transition-colors duration-200`}
+        className={`fixed z-50 top-20 left-6 p-3 rounded-full shadow-lg ${
+          panelAbierto ? 'bg-white text-gray-800' : 'bg-amber-500 text-white'
+        } transition-colors duration-200 md:hidden`}
       >
         {panelAbierto ? <FiChevronLeft size={20} /> : <FiChevronsRight size={20} />}
       </motion.button>
@@ -316,25 +360,25 @@ export default function AdminPedidosPage() {
         initial={{ x: panelAbierto ? 0 : -320 }}
         animate={{ x: panelAbierto ? 0 : -320 }}
         transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-        className={`fixed z-50   left-4 top-4 h-[calc(100vh-2rem)] w-80 bg-gradient-to-r from-black/30 to-cyan-600/50 backdrop-blur-sm shadow-2xl rounded-xl border-2 border-black/70 flex flex-col ${
+        className={`fixed z-40 left-4 top-4 h-[calc(100vh-2rem)] w-80 bg-white/95 backdrop-blur-sm shadow-2xl rounded-2xl border border-gray-200/50 flex flex-col ${
           panelAbierto ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Header del panel */}
-        <div className="p-6 bg-gradient-to-r from-orange-700/80 to-cyan-800/80 rounded-lg">
+        <div className="p-6 bg-gradient-to-r from-amber-600 to-cyan-600 rounded-t-2xl">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-teal-900 flex items-center gap-2">
-              <FiPackage className="text-black" size={24} />
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              <FiPackage className="text-yellow-300" size={24} />
               <span>Filtrar Pedidos</span>
             </h3>
             <button 
               onClick={togglePanel}
-              className="hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-black/50 hover:bg-green-800/70 text-white transition-colors"
+              className="hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
             >
               <FiChevronLeft size={18} />
             </button>
           </div>
-          <p className="text-gray-800 hover:border-r-black text-sm mt-2">
+          <p className="text-amber-100 text-sm mt-2">
             Selecciona el estado de los pedidos a mostrar
           </p>
         </div>
@@ -348,11 +392,11 @@ export default function AdminPedidosPage() {
               whileTap={{ scale: 0.98 }}
               onClick={() => setFiltroEstado('todos')}
               disabled={cargando}
-              className={`w-full text-left p-4 rounded-xl transition-all flex items-center gap-3 shadow-xl hover:shadow-cyan-700 disabled:opacity-90 ${
-                filtroEstado === 'todos'
-              } bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-black/80`}
+              className={`w-full text-left p-4 rounded-xl transition-all flex items-center gap-3 shadow-md hover:shadow-lg disabled:opacity-50 ${
+                filtroEstado === 'todos' ? 'ring-2 ring-amber-500' : ''
+              } bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300`}
             >
-              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-red-500 to-orange-700 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-gray-500 to-gray-600 flex items-center justify-center">
                 <FiUser className="text-white" size={20} />
               </div>
               <div className="flex-1">
@@ -360,7 +404,7 @@ export default function AdminPedidosPage() {
                 <span className="text-sm text-gray-600">Ver todos los pedidos registrados</span>
               </div>
               <div className="text-right">
-                <div className="px-3 py-1 bg-gradient-to-r from-orange-500 to-orange-800 text-black text-xs font-bold rounded-full">
+                <div className="px-3 py-1 bg-gray-600 text-white text-xs font-medium rounded-full">
                   {pedidos.length}
                 </div>
               </div>
@@ -378,8 +422,8 @@ export default function AdminPedidosPage() {
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setFiltroEstado(estado.value)}
                   disabled={cargando || count === 0}
-                  className={`w-full text-left p-4 rounded-xl transition-all flex items-center gap-3 shadow-xl hover:shadow-cyan-700 disabled:opacity-90 ${
-                    filtroEstado === estado.value ? 'ring-2 ring-cyan-500/60' : ''
+                  className={`w-full text-left p-4 rounded-xl transition-all flex items-center gap-3 shadow-md hover:shadow-lg disabled:opacity-50 ${
+                    filtroEstado === estado.value ? 'ring-2 ring-amber-500' : ''
                   } ${estado.bgColor}`}
                 >
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center ${estado.iconBg}`}>
@@ -389,12 +433,12 @@ export default function AdminPedidosPage() {
                     <span className="font-semibold text-gray-800 block">{estado.label}</span>
                     <span className="text-sm text-gray-600">{estado.description}</span>
                   </div>
-                  <div className="text-right  hover:black">
-                    <div className={`px-3 py-1 text-black text-xs font-medium rounded-full ${
-                      estado.color === 'red' ? 'bg-gradient-to-r from-red-500 to-rose-600' :
-                      estado.color === 'blue' ? 'bg-gradient-to-r from-blue-500 to-cyan-700' :
-                      estado.color === 'purple' ? 'bg-gradient-to-r from-purple-500 to-fuchsia-600' :
-                      'bg-gradient-to-r from-green-500 to-teal-700'
+                  <div className="text-right">
+                    <div className={`px-3 py-1 text-white text-xs font-medium rounded-full ${
+                      estado.color === 'red' ? 'bg-red-500' :
+                      estado.color === 'blue' ? 'bg-blue-500' :
+                      estado.color === 'purple' ? 'bg-purple-500' :
+                      'bg-green-500'
                     }`}>
                       {count}
                     </div>
@@ -406,7 +450,7 @@ export default function AdminPedidosPage() {
         </div>
 
         {/* Footer del panel */}
-        <div className="p-6 bg-teal-700/30 rounded-xl mt-auto">
+        <div className="p-6 bg-gray-50 rounded-b-2xl mt-auto">
           <button
             onClick={fetchPedidos}
             disabled={cargando}

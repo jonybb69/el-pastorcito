@@ -1,29 +1,23 @@
-'use client'
+// components/ui/card.tsx
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
-import { motion } from 'framer-motion'
-import React from 'react'
-import { cn } from '@/lib/utils'
-
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode
-  className?: string
-}
-
-const Card: React.FC<CardProps> = ({ children, className, ...props }) => {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: 'easeOut' }}
-      className={cn(
-        'w-full max-w-md mx-auto bg-white/90 backdrop-blur-md shadow-xl rounded-2xl p-6 border border-gray-200 dark:bg-gray-900 dark:border-gray-700 dark:text-white',
-        className
-      )}
-      {...(props as React.ComponentPropsWithoutRef<typeof motion.div>)}
-    >
-      {children}
-    </motion.div>
+const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn("rounded-xl border bg-white text-card-foreground shadow-sm", className)}
+      {...props}
+    />
   )
-}
+);
+Card.displayName = "Card";
 
-export default Card
+const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn("p-6", className)} {...props} />
+  )
+);
+CardContent.displayName = "CardContent";
+
+export { Card, CardContent };

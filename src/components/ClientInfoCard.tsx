@@ -137,7 +137,7 @@ const ClientInfoCard = ({ cliente, router }: ClientInfoCardProps) => {
               {cliente && cliente.cliente ? (
                 <>
                   <button
-                    onClick={() => router.push('/clientes/perfil')}
+                    onClick={() => router.push('/user-profile')}
                     className="w-full pt-2 flex items-center justify-between p-3 rounded-md hover:bg-black/30 shadow-xl hover:shadow-black transition-all"
                   >
                     <div className="flex px-5 items-center space-x-3">

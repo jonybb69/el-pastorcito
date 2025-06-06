@@ -12,6 +12,7 @@ interface ClienteState {
   clientes: Cliente[];
   cliente: Cliente | null;
   metodoPago: string;
+  actualizarCliente: () => void;
   agregarCliente: (nuevoCliente: Cliente) => void;
   setCliente: (cliente: Cliente) => void;
   resetCliente: () => void;
@@ -23,6 +24,7 @@ export const useClientStore = create<ClienteState>()(
     (set) => ({
       clientes: [],
       cliente: null,
+      actualizarCliente:() => set({ cliente: null }),
       metodoPago: '',
       agregarCliente: (nuevoCliente) =>
         set((state) => ({
